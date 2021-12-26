@@ -1,0 +1,27 @@
+name: nextstory
+description: A Library plugin project.
+version: 1.0.0
+publish_to: 'none'
+homepage: http://ec2-3-34-185-2.ap-northeast-2.compute.amazonaws.com:8889/troy/library_flutter
+
+environment:
+  sdk: '>=2.15.0 <3.0.0'
+  flutter: '>=2.5.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^1.0.0
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: com.nextstory.nextstory
+        pluginClass: NextstoryPlugin
+      ios:
+        pluginClass: NextstoryPlugin
