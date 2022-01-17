@@ -1,14 +1,11 @@
 import 'dart:io';
 import 'dart:math';
-import 'dart:ui';
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 
 const double _kBackGestureWidth = 20.0;
 const double _kMinFlingVelocity = 1.0;
-const int _kMaxDroppedSwipePageForwardAnimationTime = 800;
-const int _kMaxPageBackAnimationTime = 300;
 
 /// 전환 효과 빌더
 typedef PopGesturePageTransitionBuilder = Widget Function(
@@ -19,14 +16,9 @@ typedef PopGesturePageTransitionBuilder = Widget Function(
 
 /// 간단히 구현하기 위한 [Route]
 class SimpleRoute<T> extends PageRoute<T> {
-  static bool iosTestEnabled = false;
-  static final Duration _defaultTransitionDuration =
-      (Platform.isIOS || iosTestEnabled)
-          ? const Duration(milliseconds: 400)
-          : const Duration(milliseconds: 300);
-
   SimpleRoute({
     RouteSettings? settings,
+    this.usingCupertinoTransition = false,
     this.popGestureEnabled = true,
     this.popGestureDragRange = 1.0,
     required this.page,
@@ -39,14 +31,17 @@ class SimpleRoute<T> extends PageRoute<T> {
     this.barrierLabel,
     this.maintainState = true,
   }) : super(settings: settings, fullscreenDialog: !popGestureEnabled) {
-    _transitionDuration = transitionDuration ?? _defaultTransitionDuration;
-    _reverseTransitionDuration =
-        reverseTransitionDuration ?? _defaultTransitionDuration;
+    final defaultDuration = (Platform.isIOS || usingCupertinoTransition)
+        ? const Duration(milliseconds: 500)
+        : const Duration(milliseconds: 300);
+    _transitionDuration = transitionDuration ?? defaultDuration;
+    _reverseTransitionDuration = reverseTransitionDuration ?? defaultDuration;
   }
 
   /// 현재 설정을 복사하여 새 인스턴스 생성
   SimpleRoute<T> copyWith({
     RouteSettings? settings,
+    bool? usingCupertinoTransition,
     bool? popGestureEnabled,
     double? popGestureDragRange,
     WidgetBuilder? page,
@@ -61,6 +56,8 @@ class SimpleRoute<T> extends PageRoute<T> {
   }) {
     return SimpleRoute(
       settings: settings ?? this.settings,
+      usingCupertinoTransition:
+          usingCupertinoTransition ?? this.usingCupertinoTransition,
       popGestureEnabled: popGestureEnabled ?? this.popGestureEnabled,
       popGestureDragRange: popGestureDragRange ?? this.popGestureDragRange,
       page: page ?? this.page,
@@ -84,6 +81,11 @@ class SimpleRoute<T> extends PageRoute<T> {
 
   /// 뒤로가기 제스처 사용 유무
   final bool popGestureEnabled;
+
+  /// 강제 iOS 전환 효과 사용
+  ///
+  /// [transition]가 지정되지 않았을때 기본 iOS 전환 스타일 사용
+  final bool usingCupertinoTransition;
 
   /// 페이지 빌더
   final WidgetBuilder page;
@@ -136,7 +138,7 @@ class SimpleRoute<T> extends PageRoute<T> {
     Animation<double> secondaryAnimation,
     Widget child,
   ) {
-    if (Platform.isIOS || iosTestEnabled) {
+    if (Platform.isIOS || usingCupertinoTransition) {
       return _buildCupertinoTransition(
         context,
         animation,
@@ -144,8 +146,37 @@ class SimpleRoute<T> extends PageRoute<T> {
         popGestureEnabled
             ? _CupertinoBackGestureDetector<T>(
                 popGestureDragRange: popGestureDragRange,
-                enabledCallback: () => _isPopGestureEnabled(this),
-                onStartPopGesture: () => _startPopGesture(this),
+                enabledCallback: () {
+                  if (isFirst) {
+                    return false;
+                  }
+                  if (willHandlePopInternally) {
+                    return false;
+                  }
+                  if (hasScopedWillPopCallback) {
+                    return false;
+                  }
+                  if (!popGestureEnabled) {
+                    return false;
+                  }
+                  if (this.animation!.status != AnimationStatus.completed) {
+                    return false;
+                  }
+                  if (this.secondaryAnimation!.status !=
+                      AnimationStatus.dismissed) {
+                    return false;
+                  }
+                  if (isPopGestureInProgress(this)) {
+                    return false;
+                  }
+                  return true;
+                },
+                onStartPopGesture: () => _CupertinoBackGestureController<T>(
+                  navigator: navigator!,
+                  controller: controller!,
+                  transitionDuration: transitionDuration,
+                  reverseTranstionDuration: reverseTransitionDuration,
+                ),
                 child: child,
               )
             : child,
@@ -301,7 +332,37 @@ class SimpleRoute<T> extends PageRoute<T> {
             ),
           ),
           textDirection: textDirection,
-          child: child,
+          child: DecoratedBoxTransition(
+            decoration: (linearTransition
+                    ? animation
+                    : CurvedAnimation(
+                        parent: animation,
+                        curve: Curves.linearToEaseOut,
+                      ))
+                .drive(
+              DecorationTween(
+                begin: const BoxDecoration(
+                  boxShadow: [
+                    BoxShadow(
+                      color: Color(0x00000000),
+                      blurRadius: 0.0,
+                      spreadRadius: 0.0,
+                    )
+                  ],
+                ),
+                end: const BoxDecoration(
+                  boxShadow: [
+                    BoxShadow(
+                      color: Color(0x0f000000),
+                      blurRadius: 24.0,
+                      spreadRadius: 8.0,
+                    )
+                  ],
+                ),
+              ),
+            ),
+            child: child,
+          ),
         ),
       ),
     );
@@ -359,29 +420,6 @@ class SimpleRoute<T> extends PageRoute<T> {
   static bool isPopGestureInProgress(Route<dynamic> route) {
     return route.navigator!.userGestureInProgress;
   }
-
-  static bool _isPopGestureEnabled<T>(SimpleRoute<T> route) {
-    if (route.isFirst) return false;
-    if (route.willHandlePopInternally) return false;
-    if (route.hasScopedWillPopCallback) return false;
-    if (!route.popGestureEnabled) return false;
-    if (route.animation!.status != AnimationStatus.completed) return false;
-    if (route.secondaryAnimation!.status != AnimationStatus.dismissed) {
-      return false;
-    }
-    if (isPopGestureInProgress(route)) return false;
-    return true;
-  }
-
-  static _CupertinoBackGestureController<T> _startPopGesture<T>(
-    SimpleRoute<T> route,
-  ) {
-    assert(_isPopGestureEnabled(route));
-    return _CupertinoBackGestureController<T>(
-      navigator: route.navigator!,
-      controller: route.controller!,
-    );
-  }
 }
 
 class _CupertinoBackGestureDetector<T> extends StatefulWidget {
@@ -394,11 +432,8 @@ class _CupertinoBackGestureDetector<T> extends StatefulWidget {
   }) : super(key: key);
 
   final Widget child;
-
   final double? popGestureDragRange;
-
   final ValueGetter<bool> enabledCallback;
-
   final ValueGetter<_CupertinoBackGestureController<T>> onStartPopGesture;
 
   @override
@@ -409,13 +444,13 @@ class _CupertinoBackGestureDetector<T> extends StatefulWidget {
 class _CupertinoBackGestureDetectorState<T>
     extends State<_CupertinoBackGestureDetector<T>> {
   _CupertinoBackGestureController<T>? _backGestureController;
-
   late HorizontalDragGestureRecognizer _recognizer;
 
   @override
   void initState() {
     super.initState();
-    _recognizer = HorizontalDragGestureRecognizer(debugOwner: this)
+
+    _recognizer = HorizontalDragGestureRecognizer()
       ..onStart = _handleDragStart
       ..onUpdate = _handleDragUpdate
       ..onEnd = _handleDragEnd
@@ -429,19 +464,18 @@ class _CupertinoBackGestureDetectorState<T>
   }
 
   void _handleDragStart(DragStartDetails details) {
-    assert(mounted);
-    assert(_backGestureController == null);
     _backGestureController = widget.onStartPopGesture();
   }
 
   void _handleDragUpdate(DragUpdateDetails details) {
-    assert(mounted);
-
     if (_backGestureController != null) {
       if (_backGestureController!.controller.value >
           1.0 - (widget.popGestureDragRange ?? 1.0)) {
         _backGestureController!.dragUpdate(
-            _convertToLogical(details.primaryDelta! / context.size!.width));
+          _convertToLogical(
+            details.primaryDelta! / context.size!.width,
+          ),
+        );
       } else {
         _backGestureController?.dragEnd(1.0);
         _backGestureController = null;
@@ -450,14 +484,15 @@ class _CupertinoBackGestureDetectorState<T>
   }
 
   void _handleDragEnd(DragEndDetails details) {
-    assert(mounted);
-    _backGestureController?.dragEnd(_convertToLogical(
-        details.velocity.pixelsPerSecond.dx / context.size!.width));
+    _backGestureController?.dragEnd(
+      _convertToLogical(
+        details.velocity.pixelsPerSecond.dx / context.size!.width,
+      ),
+    );
     _backGestureController = null;
   }
 
   void _handleDragCancel() {
-    assert(mounted);
     _backGestureController?.dragEnd(0.0);
     _backGestureController = null;
   }
@@ -479,7 +514,6 @@ class _CupertinoBackGestureDetectorState<T>
 
   @override
   Widget build(BuildContext context) {
-    assert(debugCheckHasDirectionality(context));
     double dragAreaWidth = Directionality.of(context) == TextDirection.ltr
         ? MediaQuery.of(context).padding.left
         : MediaQuery.of(context).padding.right;
@@ -507,19 +541,21 @@ class _CupertinoBackGestureController<T> {
   _CupertinoBackGestureController({
     required this.navigator,
     required this.controller,
+    required this.transitionDuration,
+    required this.reverseTranstionDuration,
   }) {
     navigator.didStartUserGesture();
   }
 
   final AnimationController controller;
   final NavigatorState navigator;
+  final Duration transitionDuration, reverseTranstionDuration;
 
   void dragUpdate(double delta) {
     controller.value -= delta;
   }
 
   void dragEnd(double velocity) {
-    const Curve animationCurve = Curves.fastLinearToSlowEaseIn;
     final bool animateForward;
 
     if (velocity.abs() >= _kMinFlingVelocity) {
@@ -529,16 +565,10 @@ class _CupertinoBackGestureController<T> {
     }
 
     if (animateForward) {
-      final int droppedPageForwardAnimationTime = min(
-        lerpDouble(
-                _kMaxDroppedSwipePageForwardAnimationTime, 0, controller.value)!
-            .floor(),
-        _kMaxPageBackAnimationTime,
-      );
       controller.animateTo(
         1.0,
-        duration: Duration(milliseconds: droppedPageForwardAnimationTime),
-        curve: animationCurve,
+        duration: transitionDuration * 0.5,
+        curve: Curves.linearToEaseOut,
       );
       if (controller.isAnimating) {
         late AnimationStatusListener animationStatusCallback;
@@ -551,13 +581,10 @@ class _CupertinoBackGestureController<T> {
         navigator.didStopUserGesture();
       }
     } else {
-      final int droppedPageBackAnimationTime = lerpDouble(
-              0, _kMaxDroppedSwipePageForwardAnimationTime, controller.value)!
-          .floor();
       controller.animateTo(
         0.0,
-        duration: Duration(milliseconds: droppedPageBackAnimationTime),
-        curve: animationCurve,
+        duration: transitionDuration * 0.5,
+        curve: Curves.linearToEaseOut,
       );
       if (controller.isAnimating) {
         late AnimationStatusListener animationStatusCallback;
