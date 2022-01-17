@@ -1,25 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
+import 'package:nextstory/nextstory.dart';
 import 'package:nextstory/widgets/scaffold_base.dart';
-import 'package:nextstory/widgets/transparent_navigation_bar.dart';
 import 'package:nextstory_example/resources/app_resource.dart';
 import 'package:nextstory_example/routes/app_route.dart';
 import 'package:provider/provider.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Nextstory.enableAndroidTransparentNavigationBar();
+  await Nextstory.disableDelayTouchesBeganIOS();
+
   runApp(
-    TransparentNavigationBarAndroid(
-      child: MultiProvider(
-        providers: [
-          ChangeNotifierProvider<AppRoutes>(
-            create: (_) => AppRoutes(),
-          ),
-          ChangeNotifierProvider<AppResources>(
-            create: (_) => AppResources(),
-          ),
-        ],
-        child: _App(),
-      ),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider<AppRoutes>(
+          create: (_) => AppRoutes(),
+        ),
+        ChangeNotifierProvider<AppResources>(
+          create: (_) => AppResources(),
+        ),
+      ],
+      child: _App(),
     ),
   );
 }

@@ -9,6 +9,17 @@ public class SwiftNextstoryPlugin: NSObject, FlutterPlugin {
   }
 
   public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
-    // no-op
+    if (call.method == "enableAndroidTransparentNavigationBar") {
+      result(nil)
+      return
+    }
+
+    if (call.method == "disableDelayTouchesBeganIOS") {
+      let window = (UIApplication.shared.delegate as! FlutterAppDelegate).window!;
+      (window.gestureRecognizers![0] as UIGestureRecognizer).delaysTouchesBegan = false
+      (window.gestureRecognizers![1] as UIGestureRecognizer).delaysTouchesBegan = false
+      result(nil)
+      return
+    }
   }
 }
