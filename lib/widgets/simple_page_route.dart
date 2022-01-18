@@ -4,8 +4,10 @@ import 'dart:math';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 
+const bool _kIOSDebug = false;
 const double _kBackGestureWidth = 20.0;
 const double _kMinFlingVelocity = 1.0;
+const Animation<double> kAlwaysDismissedAnimation = _AlwaysDismissedAnimation();
 
 /// 전환 효과 빌더
 typedef SimplePageRouteTransitionBuilder = Widget Function(
@@ -14,15 +16,16 @@ typedef SimplePageRouteTransitionBuilder = Widget Function(
   Widget child,
 );
 
-/// 간단히 구현하기 위한 [Route]
+/// 간단 구현용 [PageRoute]
 class SimplePageRoute<T> extends PageRoute<T> {
   SimplePageRoute({
     RouteSettings? settings,
-    this.usingCupertinoTransition = false,
-    this.popGestureEnabled = true,
+    bool fullscreenDialog = false,
     this.popGestureDragRange = 1.0,
     required this.page,
-    this.transition,
+    SimplePageRouteTransitionBuilder? transition,
+    SimplePageRouteTransitionBuilder? previousPopTransition,
+    SimplePageRouteTransitionBuilder? fullscreenDialogTransition,
     Duration? transitionDuration,
     Duration? reverseTransitionDuration,
     this.opaque = true,
@@ -30,22 +33,204 @@ class SimplePageRoute<T> extends PageRoute<T> {
     this.barrierColor,
     this.barrierLabel,
     this.maintainState = true,
-  }) : super(settings: settings, fullscreenDialog: !popGestureEnabled) {
-    final defaultDuration = (Platform.isIOS || usingCupertinoTransition)
-        ? const Duration(milliseconds: 500)
-        : const Duration(milliseconds: 300);
-    _transitionDuration = transitionDuration ?? defaultDuration;
-    _reverseTransitionDuration = reverseTransitionDuration ?? defaultDuration;
+  }) : super(settings: settings, fullscreenDialog: fullscreenDialog) {
+    _transitionDuration = transitionDuration;
+    _reverseTransitionDuration = reverseTransitionDuration;
+
+    if (transition == null) {
+      if (Platform.isIOS || _kIOSDebug) {
+        this.transition = (context, animation, child) {
+          final linearTransition = Navigator.of(context).userGestureInProgress;
+          final textDirection = Directionality.of(context);
+          return SlideTransition(
+            position: (linearTransition
+                    ? animation
+                    : CurvedAnimation(
+                        parent: animation,
+                        curve: Curves.linearToEaseOut,
+                        reverseCurve: Curves.easeInToLinear,
+                      ))
+                .drive(
+              Tween<Offset>(
+                begin: const Offset(1.0, 0.0),
+                end: Offset.zero,
+              ),
+            ),
+            textDirection: textDirection,
+            child: DecoratedBoxTransition(
+              decoration: (linearTransition
+                      ? animation
+                      : CurvedAnimation(
+                          parent: animation,
+                          curve: Curves.linearToEaseOut,
+                        ))
+                  .drive(
+                DecorationTween(
+                  begin: const BoxDecoration(
+                    boxShadow: [
+                      BoxShadow(
+                        color: Color(0x00000000),
+                        blurRadius: 0.0,
+                        spreadRadius: 0.0,
+                      )
+                    ],
+                  ),
+                  end: const BoxDecoration(
+                    boxShadow: [
+                      BoxShadow(
+                        color: Color(0x0f000000),
+                        blurRadius: 24.0,
+                        spreadRadius: 8.0,
+                      )
+                    ],
+                  ),
+                ),
+              ),
+              child: child,
+            ),
+          );
+        };
+      } else {
+        this.transition = (_, animation, child) {
+          return SlideTransition(
+            position: CurvedAnimation(
+              parent: animation,
+              curve: Curves.linearToEaseOut,
+              reverseCurve: Curves.fastLinearToSlowEaseIn,
+            ).drive(
+              Tween<Offset>(
+                begin: const Offset(0.0, 0.4),
+                end: const Offset(0.0, 0.0),
+              ),
+            ),
+            child: FadeTransition(
+              opacity: CurvedAnimation(
+                parent: animation,
+                curve: Curves.linearToEaseOut,
+                reverseCurve: Curves.fastLinearToSlowEaseIn,
+              ).drive(
+                Tween<double>(
+                  begin: 0.0,
+                  end: 1.0,
+                ),
+              ),
+              child: child,
+            ),
+          );
+        };
+      }
+    } else {
+      this.transition = transition;
+    }
+
+    if (previousPopTransition == null) {
+      if (Platform.isIOS || _kIOSDebug) {
+        this.previousPopTransition = (context, animation, child) {
+          final linearTransition = Navigator.of(context).userGestureInProgress;
+          final textDirection = Directionality.of(context);
+          return SlideTransition(
+            position: (linearTransition
+                    ? animation
+                    : CurvedAnimation(
+                        parent: animation,
+                        curve: Curves.linearToEaseOut,
+                        reverseCurve: Curves.easeInToLinear,
+                      ))
+                .drive(
+              Tween<Offset>(
+                begin: Offset.zero,
+                end: const Offset(-1.0 / 3.0, 0.0),
+              ),
+            ),
+            textDirection: textDirection,
+            transformHitTests: false,
+            child: FadeTransition(
+              opacity: (linearTransition
+                      ? animation
+                      : CurvedAnimation(
+                          parent: animation,
+                          curve: Curves.linearToEaseOut,
+                          reverseCurve: Curves.easeInToLinear,
+                        ))
+                  .drive(
+                Tween<double>(
+                  begin: 1.0,
+                  end: 0.9,
+                ),
+              ),
+              child: child,
+            ),
+          );
+        };
+      } else {
+        this.previousPopTransition = (_, animation, child) {
+          return SlideTransition(
+            position: CurvedAnimation(
+              parent: animation,
+              curve: Curves.linearToEaseOut,
+              reverseCurve: Curves.fastLinearToSlowEaseIn,
+            ).drive(
+              Tween<Offset>(
+                begin: Offset.zero,
+                end: const Offset(0.0, -0.025),
+              ),
+            ),
+            transformHitTests: false,
+            child: FadeTransition(
+              opacity: CurvedAnimation(
+                parent: animation,
+                curve: Curves.linearToEaseOut,
+                reverseCurve: Curves.fastLinearToSlowEaseIn,
+              ).drive(
+                Tween<double>(
+                  begin: 1.0,
+                  end: 0.75,
+                ),
+              ),
+              child: child,
+            ),
+          );
+        };
+      }
+    } else {
+      this.previousPopTransition = previousPopTransition;
+    }
+
+    if (fullscreenDialogTransition == null) {
+      if (Platform.isIOS || _kIOSDebug) {
+        this.fullscreenDialogTransition =
+            (_, animation, child) => SlideTransition(
+                  position: CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.linearToEaseOut,
+                    reverseCurve: Curves.easeInToLinear,
+                  ).drive(
+                    Tween<Offset>(
+                      begin: const Offset(0.0, 1.0),
+                      end: Offset.zero,
+                    ),
+                  ),
+                  transformHitTests: false,
+                  child: child,
+                );
+      } else {
+        this.fullscreenDialogTransition = (_, __, child) => child;
+      }
+    } else {
+      this.fullscreenDialogTransition = fullscreenDialogTransition;
+    }
   }
 
   /// 현재 설정을 복사하여 새 인스턴스 생성
   SimplePageRoute<T> copyWith({
     RouteSettings? settings,
+    bool? fullscreenDialog,
     bool? usingCupertinoTransition,
-    bool? popGestureEnabled,
     double? popGestureDragRange,
     WidgetBuilder? page,
     SimplePageRouteTransitionBuilder? transition,
+    SimplePageRouteTransitionBuilder? previousPopTransition,
+    SimplePageRouteTransitionBuilder? fullscreenDialogTransition,
     Duration? transitionDuration,
     Duration? reverseTransitionDuration,
     bool? opaque,
@@ -56,15 +241,17 @@ class SimplePageRoute<T> extends PageRoute<T> {
   }) {
     return SimplePageRoute(
       settings: settings ?? this.settings,
-      usingCupertinoTransition:
-          usingCupertinoTransition ?? this.usingCupertinoTransition,
-      popGestureEnabled: popGestureEnabled ?? this.popGestureEnabled,
+      fullscreenDialog: fullscreenDialog ?? this.fullscreenDialog,
       popGestureDragRange: popGestureDragRange ?? this.popGestureDragRange,
       page: page ?? this.page,
       transition: transition ?? this.transition,
-      transitionDuration: transitionDuration ?? this.transitionDuration,
+      previousPopTransition:
+          previousPopTransition ?? this.previousPopTransition,
+      fullscreenDialogTransition:
+          fullscreenDialogTransition ?? this.fullscreenDialogTransition,
+      transitionDuration: transitionDuration ?? _transitionDuration,
       reverseTransitionDuration:
-          reverseTransitionDuration ?? this.reverseTransitionDuration,
+          reverseTransitionDuration ?? _reverseTransitionDuration,
       opaque: opaque ?? this.opaque,
       barrierDismissible: barrierDismissible ?? this.barrierDismissible,
       barrierColor: barrierColor ?? this.barrierColor,
@@ -73,27 +260,19 @@ class SimplePageRoute<T> extends PageRoute<T> {
     );
   }
 
-  /// 위젯 캐시
-  Widget? _buildPageCache;
-
-  /// 화면 전환 효과 지연시간
-  late Duration _transitionDuration, _reverseTransitionDuration;
-
-  /// 뒤로가기 제스처 사용 유무
-  final bool popGestureEnabled;
-
-  /// 강제 iOS 전환 효과 사용
-  ///
-  /// [transition]가 지정되지 않았을때 기본 iOS 전환 스타일 사용
-  final bool usingCupertinoTransition;
-
   /// 페이지 빌더
   final WidgetBuilder page;
 
   /// 전환 효과 빌더
-  final SimplePageRouteTransitionBuilder? transition;
+  late final SimplePageRouteTransitionBuilder transition;
 
-  /// 뒤로가기 제스처 동작 가능 범위
+  /// 이전 페이지에 적용될 전환 효과 빌더
+  late final SimplePageRouteTransitionBuilder previousPopTransition;
+
+  /// [fullscreenDialog] 전환 효과 빌더
+  late final SimplePageRouteTransitionBuilder fullscreenDialogTransition;
+
+  /// iOS 뒤로가기 제스처 동작 가능 범위
   ///
   /// 0.0 ~ 1.0 범위로 지정
   final double? popGestureDragRange;
@@ -114,16 +293,39 @@ class SimplePageRoute<T> extends PageRoute<T> {
   bool maintainState;
 
   @override
-  Duration get transitionDuration => _transitionDuration;
+  Duration get transitionDuration {
+    if (_transitionDuration == null) {
+      return (Platform.isIOS || _kIOSDebug)
+          ? const Duration(milliseconds: 500)
+          : const Duration(milliseconds: 300);
+    }
+    return _transitionDuration!;
+  }
 
   @override
-  Duration get reverseTransitionDuration => _reverseTransitionDuration;
+  Duration get reverseTransitionDuration {
+    if (_reverseTransitionDuration == null) {
+      return (Platform.isIOS || _kIOSDebug)
+          ? const Duration(milliseconds: 500)
+          : const Duration(milliseconds: 300);
+    }
+    return _reverseTransitionDuration!;
+  }
+
+  Widget? _buildPageCache;
+  Duration? _transitionDuration, _reverseTransitionDuration;
+  SimplePageRouteTransitionBuilder? _nextRouteSecondaryTransition;
 
   @override
   bool canTransitionTo(TransitionRoute<dynamic> nextRoute) {
-    return nextRoute is SimplePageRoute &&
-        nextRoute.transition == null &&
-        nextRoute.popGestureEnabled;
+    if (nextRoute is SimplePageRoute) {
+      if (!((Platform.isIOS || _kIOSDebug) && nextRoute.fullscreenDialog)) {
+        _nextRouteSecondaryTransition = nextRoute.previousPopTransition;
+        return true;
+      }
+    }
+    _nextRouteSecondaryTransition = null;
+    return false;
   }
 
   @override
@@ -138,12 +340,8 @@ class SimplePageRoute<T> extends PageRoute<T> {
     Animation<double> secondaryAnimation,
     Widget child,
   ) {
-    if (Platform.isIOS || usingCupertinoTransition) {
-      return _buildCupertinoTransition(
-        context,
-        animation,
-        secondaryAnimation,
-        popGestureEnabled
+    final cupertinoGestureChild =
+        ((Platform.isIOS || _kIOSDebug) && !fullscreenDialog)
             ? _CupertinoBackGestureDetector<T>(
                 popGestureDragRange: popGestureDragRange,
                 enabledCallback: () {
@@ -156,7 +354,7 @@ class SimplePageRoute<T> extends PageRoute<T> {
                   if (hasScopedWillPopCallback) {
                     return false;
                   }
-                  if (!popGestureEnabled) {
+                  if (fullscreenDialog) {
                     return false;
                   }
                   if (this.animation!.status != AnimationStatus.completed) {
@@ -166,7 +364,7 @@ class SimplePageRoute<T> extends PageRoute<T> {
                       AnimationStatus.dismissed) {
                     return false;
                   }
-                  if (isPopGestureInProgress(this)) {
+                  if (Navigator.of(context).userGestureInProgress) {
                     return false;
                   }
                   return true;
@@ -179,284 +377,29 @@ class SimplePageRoute<T> extends PageRoute<T> {
                 ),
                 child: child,
               )
-            : child,
-      );
-    }
-    return _buildMaterialTransition(
-      context,
-      animation,
-      secondaryAnimation,
-      child,
-    );
-  }
+            : child;
 
-  Widget _buildCupertinoTransition(
-    BuildContext context,
-    Animation<double> animation,
-    Animation<double> secondaryAnimation,
-    Widget child,
-  ) {
-    final bool linearTransition = isPopGestureInProgress(this);
-    final TextDirection textDirection = Directionality.of(context);
-
-    if (transition != null) {
-      return SlideTransition(
-        position: (linearTransition
-                ? secondaryAnimation
-                : CurvedAnimation(
-                    parent: secondaryAnimation,
-                    curve: Curves.linearToEaseOut,
-                    reverseCurve: Curves.easeInToLinear,
-                  ))
-            .drive(
-          Tween<Offset>(
-            begin: Offset.zero,
-            end: const Offset(-1.0 / 3.0, 0.0),
-          ),
-        ),
-        textDirection: textDirection,
-        transformHitTests: false,
-        child: FadeTransition(
-          opacity: (linearTransition
-                  ? secondaryAnimation
-                  : CurvedAnimation(
-                      parent: secondaryAnimation,
-                      curve: Curves.linearToEaseOut,
-                      reverseCurve: Curves.easeInToLinear,
-                    ))
-              .drive(
-            Tween<double>(
-              begin: 1.0,
-              end: 0.9,
-            ),
-          ),
-          child: transition!(
+    final proxyChild = (_nextRouteSecondaryTransition != null)
+        ? _nextRouteSecondaryTransition!(
             context,
-            animation,
-            child,
-          ),
-        ),
+            secondaryAnimation,
+            cupertinoGestureChild,
+          )
+        : cupertinoGestureChild;
+
+    if ((Platform.isIOS || _kIOSDebug) && fullscreenDialog) {
+      return fullscreenDialogTransition(
+        context,
+        animation,
+        proxyChild,
+      );
+    } else {
+      return transition(
+        context,
+        animation,
+        proxyChild,
       );
     }
-
-    if (!popGestureEnabled) {
-      return SlideTransition(
-        position: (linearTransition
-                ? secondaryAnimation
-                : CurvedAnimation(
-                    parent: secondaryAnimation,
-                    curve: Curves.linearToEaseOut,
-                    reverseCurve: Curves.easeInToLinear,
-                  ))
-            .drive(
-          Tween<Offset>(
-            begin: Offset.zero,
-            end: const Offset(-1.0 / 3.0, 0.0),
-          ),
-        ),
-        textDirection: textDirection,
-        transformHitTests: false,
-        child: FadeTransition(
-          opacity: (linearTransition
-                  ? secondaryAnimation
-                  : CurvedAnimation(
-                      parent: secondaryAnimation,
-                      curve: Curves.linearToEaseOut,
-                      reverseCurve: Curves.easeInToLinear,
-                    ))
-              .drive(
-            Tween<double>(
-              begin: 1.0,
-              end: 0.9,
-            ),
-          ),
-          child: SlideTransition(
-            position: CurvedAnimation(
-              parent: animation,
-              curve: Curves.linearToEaseOut,
-              reverseCurve: Curves.easeInToLinear,
-            ).drive(
-              Tween<Offset>(
-                begin: const Offset(0.0, 1.0),
-                end: Offset.zero,
-              ),
-            ),
-            transformHitTests: false,
-            child: child,
-          ),
-        ),
-      );
-    }
-    return SlideTransition(
-      position: (linearTransition
-              ? secondaryAnimation
-              : CurvedAnimation(
-                  parent: secondaryAnimation,
-                  curve: Curves.linearToEaseOut,
-                  reverseCurve: Curves.easeInToLinear,
-                ))
-          .drive(
-        Tween<Offset>(
-          begin: Offset.zero,
-          end: const Offset(-1.0 / 3.0, 0.0),
-        ),
-      ),
-      textDirection: textDirection,
-      transformHitTests: false,
-      child: FadeTransition(
-        opacity: (linearTransition
-                ? secondaryAnimation
-                : CurvedAnimation(
-                    parent: secondaryAnimation,
-                    curve: Curves.linearToEaseOut,
-                    reverseCurve: Curves.easeInToLinear,
-                  ))
-            .drive(
-          Tween<double>(
-            begin: 1.0,
-            end: 0.9,
-          ),
-        ),
-        child: SlideTransition(
-          position: (linearTransition
-                  ? animation
-                  : CurvedAnimation(
-                      parent: animation,
-                      curve: Curves.linearToEaseOut,
-                      reverseCurve: Curves.easeInToLinear,
-                    ))
-              .drive(
-            Tween<Offset>(
-              begin: const Offset(1.0, 0.0),
-              end: Offset.zero,
-            ),
-          ),
-          textDirection: textDirection,
-          child: DecoratedBoxTransition(
-            decoration: (linearTransition
-                    ? animation
-                    : CurvedAnimation(
-                        parent: animation,
-                        curve: Curves.linearToEaseOut,
-                      ))
-                .drive(
-              DecorationTween(
-                begin: const BoxDecoration(
-                  boxShadow: [
-                    BoxShadow(
-                      color: Color(0x00000000),
-                      blurRadius: 0.0,
-                      spreadRadius: 0.0,
-                    )
-                  ],
-                ),
-                end: const BoxDecoration(
-                  boxShadow: [
-                    BoxShadow(
-                      color: Color(0x0f000000),
-                      blurRadius: 24.0,
-                      spreadRadius: 8.0,
-                    )
-                  ],
-                ),
-              ),
-            ),
-            child: child,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMaterialTransition(
-    BuildContext context,
-    Animation<double> animation,
-    Animation<double> secondaryAnimation,
-    Widget child,
-  ) {
-    if (transition != null) {
-      return SlideTransition(
-        position: CurvedAnimation(
-          parent: secondaryAnimation,
-          curve: Curves.linearToEaseOut,
-          reverseCurve: Curves.fastLinearToSlowEaseIn,
-        ).drive(
-          Tween<Offset>(
-            begin: Offset.zero,
-            end: const Offset(0.0, -0.025),
-          ),
-        ),
-        transformHitTests: false,
-        child: FadeTransition(
-          opacity: CurvedAnimation(
-            parent: secondaryAnimation,
-            curve: Curves.linearToEaseOut,
-            reverseCurve: Curves.fastLinearToSlowEaseIn,
-          ).drive(
-            Tween<double>(
-              begin: 1.0,
-              end: 0.75,
-            ),
-          ),
-          child: transition!(
-            context,
-            animation,
-            child,
-          ),
-        ),
-      );
-    }
-
-    return SlideTransition(
-      position: CurvedAnimation(
-        parent: secondaryAnimation,
-        curve: Curves.linearToEaseOut,
-        reverseCurve: Curves.fastLinearToSlowEaseIn,
-      ).drive(
-        Tween<Offset>(
-          begin: Offset.zero,
-          end: const Offset(0.0, -0.025),
-        ),
-      ),
-      transformHitTests: false,
-      child: FadeTransition(
-        opacity: CurvedAnimation(
-          parent: secondaryAnimation,
-          curve: Curves.linearToEaseOut,
-          reverseCurve: Curves.fastLinearToSlowEaseIn,
-        ).drive(
-          Tween<double>(
-            begin: 1.0,
-            end: 0.75,
-          ),
-        ),
-        child: SlideTransition(
-          position: CurvedAnimation(
-            parent: animation,
-            curve: Curves.linearToEaseOut,
-            reverseCurve: Curves.fastLinearToSlowEaseIn,
-          ).drive(
-            Tween<Offset>(
-              begin: const Offset(0.0, 0.4),
-              end: const Offset(0.0, 0.0),
-            ),
-          ),
-          child: FadeTransition(
-            opacity: CurvedAnimation(
-              parent: animation,
-              curve: Curves.linearToEaseOut,
-              reverseCurve: Curves.fastLinearToSlowEaseIn,
-            ).drive(
-              Tween<double>(
-                begin: 0.0,
-                end: 1.0,
-              ),
-            ),
-            child: child,
-          ),
-        ),
-      ),
-    );
   }
 
   @override
@@ -475,11 +418,8 @@ class SimplePageRoute<T> extends PageRoute<T> {
   @override
   void dispose() {
     _buildPageCache = null;
+    _nextRouteSecondaryTransition = null;
     super.dispose();
-  }
-
-  static bool isPopGestureInProgress(Route<dynamic> route) {
-    return route.navigator!.userGestureInProgress;
   }
 }
 
@@ -665,4 +605,29 @@ class _CupertinoBackGestureController<T> {
       }
     }
   }
+}
+
+class _AlwaysDismissedAnimation extends Animation<double> {
+  const _AlwaysDismissedAnimation();
+
+  @override
+  void addListener(VoidCallback listener) {}
+
+  @override
+  void removeListener(VoidCallback listener) {}
+
+  @override
+  void addStatusListener(AnimationStatusListener listener) {}
+
+  @override
+  void removeStatusListener(AnimationStatusListener listener) {}
+
+  @override
+  AnimationStatus get status => AnimationStatus.dismissed;
+
+  @override
+  double get value => 0.0;
+
+  @override
+  String toString() => 'kAlwaysDismissedAnimation';
 }
