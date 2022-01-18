@@ -56,8 +56,6 @@ class ScaffoldBase extends StatelessWidget {
     this.bottomInsetEnabled = true,
     this.leftInsetEnabled = true,
     this.rightInsetEnabled = true,
-    this.hideKeyboardOnVisibilityGained = true,
-    this.hideKeyboardOnTap = true,
     this.windowTheme = WindowTheme.translucent,
     this.orientation = Orientation.portrait,
     this.navigationBarColor,
@@ -74,8 +72,6 @@ class ScaffoldBase extends StatelessWidget {
     bool bottomInsetEnabled = false,
     bool leftInsetEnabled = true,
     bool rightInsetEnabled = true,
-    bool hideKeyboardOnVisibilityGained = true,
-    bool hideKeyboardOnTap = true,
     WindowTheme windowTheme = WindowTheme.translucent,
     Orientation? orientation = Orientation.portrait,
     Color? navigationBarColor,
@@ -138,8 +134,6 @@ class ScaffoldBase extends StatelessWidget {
       bottomInsetEnabled: bottomInsetEnabled,
       leftInsetEnabled: leftInsetEnabled,
       rightInsetEnabled: rightInsetEnabled,
-      hideKeyboardOnVisibilityGained: hideKeyboardOnVisibilityGained,
-      hideKeyboardOnTap: hideKeyboardOnTap,
       windowTheme: windowTheme,
       orientation: orientation,
       navigationBarColor: navigationBarColor,
@@ -171,12 +165,6 @@ class ScaffoldBase extends StatelessWidget {
       bottomInsetEnabled,
       leftInsetEnabled,
       rightInsetEnabled;
-
-  /// 화면에 다시 표시될때 키보드 숨기기
-  final bool hideKeyboardOnVisibilityGained;
-
-  /// 포커스 가능하거나 클릭 영역이 아닌곳에 탭할 경우 키보드 숨기기
-  final bool hideKeyboardOnTap;
 
   /// 테마 설정
   final WindowTheme windowTheme;
@@ -289,86 +277,71 @@ class ScaffoldBase extends StatelessWidget {
             systemNavigationBarIconBrightness:
                 _getNavigationBarIconBrightness(context),
           ),
-          child: GestureDetector(
-            onTap: hideKeyboardOnTap
-                ? () => FocusScope.of(context).unfocus()
-                : null,
-            child: FocusDetector(
-              onFocusGained: () {
-                _applyScreenOrientation();
-                _applyTheme();
-              },
-              onVisibilityGained: () {
-                if (hideKeyboardOnVisibilityGained) {
-                  try {
-                    FocusScope.of(context).unfocus();
-                  } catch (_) {
-                    // ignored
-                  }
-                }
-              },
-              child: Container(
-                color: backgroundColor,
-                child: Stack(
-                  children: [
-                    SafeArea(
-                      top: topInsetEnabled,
-                      left: leftInsetEnabled,
-                      right: rightInsetEnabled,
-                      bottom:
-                          _hasGestureBar(context) ? bottomInsetEnabled : true,
-                      child: builder(context),
-                    ),
-                    Visibility(
-                      visible: topInsetEnabled,
-                      child: Container(
-                        color: topInsetBackgroundColor ?? backgroundColor,
-                        height: mediaQuery.padding.top,
-                      ),
-                    ),
-                    Visibility(
-                      visible: windowTheme == WindowTheme.translucent &&
-                          _androidVersion >= 23,
-                      child: Container(
-                        color: Colors.black.withAlpha((0.2 * 0xff).toInt()),
-                        height: mediaQuery.padding.top,
-                      ),
-                    ),
-                    Visibility(
-                      visible: _hasGestureBar(context) && bottomInsetEnabled,
-                      child: Align(
-                        alignment: Alignment.bottomCenter,
-                        child: Container(
-                          color: bottomInsetBackgroundColor ?? backgroundColor,
-                          height: mediaQuery.padding.bottom,
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      top: 0.0,
-                      left: 0.0,
-                      right: 0.0,
+          child: FocusDetector(
+            onFocusGained: () {
+              _applyScreenOrientation();
+              _applyTheme();
+            },
+            child: Container(
+              color: backgroundColor,
+              child: Stack(
+                children: [
+                  SafeArea(
+                    top: topInsetEnabled,
+                    left: leftInsetEnabled,
+                    right: rightInsetEnabled,
+                    bottom: _hasGestureBar(context) ? bottomInsetEnabled : true,
+                    child: builder(context),
+                  ),
+                  Visibility(
+                    visible: topInsetEnabled,
+                    child: Container(
+                      color: topInsetBackgroundColor ?? backgroundColor,
                       height: mediaQuery.padding.top,
-                      child: GestureDetector(
-                        excludeFromSemantics: true,
-                        onTap: Platform.isIOS
-                            ? () {
-                                final _primaryScrollController =
-                                    PrimaryScrollController.of(context);
-                                if (_primaryScrollController != null &&
-                                    _primaryScrollController.hasClients) {
-                                  _primaryScrollController.animateTo(
-                                    0.0,
-                                    duration: const Duration(milliseconds: 500),
-                                    curve: Curves.linearToEaseOut,
-                                  );
-                                }
-                              }
-                            : null,
+                    ),
+                  ),
+                  Visibility(
+                    visible: windowTheme == WindowTheme.translucent &&
+                        _androidVersion >= 23,
+                    child: Container(
+                      color: Colors.black.withAlpha((0.2 * 0xff).toInt()),
+                      height: mediaQuery.padding.top,
+                    ),
+                  ),
+                  Visibility(
+                    visible: _hasGestureBar(context) && bottomInsetEnabled,
+                    child: Align(
+                      alignment: Alignment.bottomCenter,
+                      child: Container(
+                        color: bottomInsetBackgroundColor ?? backgroundColor,
+                        height: mediaQuery.padding.bottom,
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                  Positioned(
+                    top: 0.0,
+                    left: 0.0,
+                    right: 0.0,
+                    height: mediaQuery.padding.top,
+                    child: GestureDetector(
+                      excludeFromSemantics: true,
+                      onTap: Platform.isIOS
+                          ? () {
+                              final _primaryScrollController =
+                                  PrimaryScrollController.of(context);
+                              if (_primaryScrollController != null &&
+                                  _primaryScrollController.hasClients) {
+                                _primaryScrollController.animateTo(
+                                  0.0,
+                                  duration: const Duration(milliseconds: 500),
+                                  curve: Curves.linearToEaseOut,
+                                );
+                              }
+                            }
+                          : null,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
