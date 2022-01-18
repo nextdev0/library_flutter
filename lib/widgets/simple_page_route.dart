@@ -8,15 +8,15 @@ const double _kBackGestureWidth = 20.0;
 const double _kMinFlingVelocity = 1.0;
 
 /// 전환 효과 빌더
-typedef PopGesturePageTransitionBuilder = Widget Function(
+typedef SimplePageRouteTransitionBuilder = Widget Function(
   BuildContext context,
   Animation<double> animation,
   Widget child,
 );
 
 /// 간단히 구현하기 위한 [Route]
-class SimpleRoute<T> extends PageRoute<T> {
-  SimpleRoute({
+class SimplePageRoute<T> extends PageRoute<T> {
+  SimplePageRoute({
     RouteSettings? settings,
     this.usingCupertinoTransition = false,
     this.popGestureEnabled = true,
@@ -39,13 +39,13 @@ class SimpleRoute<T> extends PageRoute<T> {
   }
 
   /// 현재 설정을 복사하여 새 인스턴스 생성
-  SimpleRoute<T> copyWith({
+  SimplePageRoute<T> copyWith({
     RouteSettings? settings,
     bool? usingCupertinoTransition,
     bool? popGestureEnabled,
     double? popGestureDragRange,
     WidgetBuilder? page,
-    PopGesturePageTransitionBuilder? transition,
+    SimplePageRouteTransitionBuilder? transition,
     Duration? transitionDuration,
     Duration? reverseTransitionDuration,
     bool? opaque,
@@ -54,7 +54,7 @@ class SimpleRoute<T> extends PageRoute<T> {
     String? barrierLabel,
     bool? maintainState,
   }) {
-    return SimpleRoute(
+    return SimplePageRoute(
       settings: settings ?? this.settings,
       usingCupertinoTransition:
           usingCupertinoTransition ?? this.usingCupertinoTransition,
@@ -91,7 +91,7 @@ class SimpleRoute<T> extends PageRoute<T> {
   final WidgetBuilder page;
 
   /// 전환 효과 빌더
-  final PopGesturePageTransitionBuilder? transition;
+  final SimplePageRouteTransitionBuilder? transition;
 
   /// 뒤로가기 제스처 동작 가능 범위
   ///
@@ -121,7 +121,7 @@ class SimpleRoute<T> extends PageRoute<T> {
 
   @override
   bool canTransitionTo(TransitionRoute<dynamic> nextRoute) {
-    return nextRoute is SimpleRoute &&
+    return nextRoute is SimplePageRoute &&
         nextRoute.transition == null &&
         nextRoute.popGestureEnabled;
   }
@@ -375,25 +375,86 @@ class SimpleRoute<T> extends PageRoute<T> {
     Widget child,
   ) {
     if (transition != null) {
-      return transition!(
-        context,
-        animation,
-        child,
+      return SlideTransition(
+        position: CurvedAnimation(
+          parent: secondaryAnimation,
+          curve: Curves.linearToEaseOut,
+          reverseCurve: Curves.fastLinearToSlowEaseIn,
+        ).drive(
+          Tween<Offset>(
+            begin: Offset.zero,
+            end: const Offset(0.0, -0.025),
+          ),
+        ),
+        transformHitTests: false,
+        child: FadeTransition(
+          opacity: CurvedAnimation(
+            parent: secondaryAnimation,
+            curve: Curves.linearToEaseOut,
+            reverseCurve: Curves.fastLinearToSlowEaseIn,
+          ).drive(
+            Tween<double>(
+              begin: 1.0,
+              end: 0.75,
+            ),
+          ),
+          child: transition!(
+            context,
+            animation,
+            child,
+          ),
+        ),
       );
     }
 
     return SlideTransition(
-      position: animation.drive(
+      position: CurvedAnimation(
+        parent: secondaryAnimation,
+        curve: Curves.linearToEaseOut,
+        reverseCurve: Curves.fastLinearToSlowEaseIn,
+      ).drive(
         Tween<Offset>(
-          begin: const Offset(0.0, 0.25),
-          end: Offset.zero,
-        ).chain(
-          CurveTween(curve: Curves.fastOutSlowIn),
+          begin: Offset.zero,
+          end: const Offset(0.0, -0.025),
         ),
       ),
+      transformHitTests: false,
       child: FadeTransition(
-        opacity: animation.drive(CurveTween(curve: Curves.easeIn)),
-        child: child,
+        opacity: CurvedAnimation(
+          parent: secondaryAnimation,
+          curve: Curves.linearToEaseOut,
+          reverseCurve: Curves.fastLinearToSlowEaseIn,
+        ).drive(
+          Tween<double>(
+            begin: 1.0,
+            end: 0.75,
+          ),
+        ),
+        child: SlideTransition(
+          position: CurvedAnimation(
+            parent: animation,
+            curve: Curves.linearToEaseOut,
+            reverseCurve: Curves.fastLinearToSlowEaseIn,
+          ).drive(
+            Tween<Offset>(
+              begin: const Offset(0.0, 0.4),
+              end: const Offset(0.0, 0.0),
+            ),
+          ),
+          child: FadeTransition(
+            opacity: CurvedAnimation(
+              parent: animation,
+              curve: Curves.linearToEaseOut,
+              reverseCurve: Curves.fastLinearToSlowEaseIn,
+            ).drive(
+              Tween<double>(
+                begin: 0.0,
+                end: 1.0,
+              ),
+            ),
+            child: child,
+          ),
+        ),
       ),
     );
   }
