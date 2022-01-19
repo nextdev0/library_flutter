@@ -145,8 +145,8 @@ class TextFieldBase extends StatelessWidget {
       } else {
         for (final focusNode in FocusScope.of(context).children) {
           if (focusNode.context != null) {
-            if (focusNode.context!.widget is TextFormField) {
-              final textField = focusNode.context!.widget as TextFormField;
+            if (focusNode.context!.widget is EditableText) {
+              final textField = focusNode.context!.widget as EditableText;
               if (textField.controller == nextController) {
                 focusNode.requestFocus();
                 break;
