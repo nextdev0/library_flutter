@@ -571,38 +571,27 @@ class _CupertinoBackGestureController<T> {
         duration: transitionDuration * 0.5,
         curve: Curves.linearToEaseOut,
       );
-      if (controller.isAnimating) {
-        late AnimationStatusListener animationStatusCallback;
-        animationStatusCallback = (AnimationStatus status) {
-          navigator.didStopUserGesture();
-          controller.removeStatusListener(animationStatusCallback);
-        };
-        controller.addStatusListener(animationStatusCallback);
-      } else {
-        navigator.didStopUserGesture();
-      }
     } else {
-      controller.animateTo(
-        0.0,
-        duration: transitionDuration * 0.5,
-        curve: Curves.linearToEaseOut,
-      );
+      navigator.pop();
+
       if (controller.isAnimating) {
-        late AnimationStatusListener animationStatusCallback;
-        animationStatusCallback = (AnimationStatus status) {
-          if (status != AnimationStatus.dismissed) {
-            navigator.pop();
-          }
-          if (status != AnimationStatus.completed) {
-            navigator.didStopUserGesture();
-          }
-          controller.removeStatusListener(animationStatusCallback);
-        };
-        controller.addStatusListener(animationStatusCallback);
-      } else {
-        navigator.pop();
-        navigator.didStopUserGesture();
+        controller.animateBack(
+          0.0,
+          duration: transitionDuration * 0.5,
+          curve: Curves.linearToEaseOut,
+        );
       }
+    }
+
+    if (controller.isAnimating) {
+      late AnimationStatusListener animationStatusCallback;
+      animationStatusCallback = (AnimationStatus status) {
+        navigator.didStopUserGesture();
+        controller.removeStatusListener(animationStatusCallback);
+      };
+      controller.addStatusListener(animationStatusCallback);
+    } else {
+      navigator.didStopUserGesture();
     }
   }
 }
