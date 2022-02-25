@@ -48,18 +48,6 @@ class _ListenableBuilderState extends State<ListenableBuilder> {
   }
 }
 
-/// [ListenableBuilder]의 간단 구독용 확장 메소드
-extension ListenableBuilderExtension on Listenable {
-  Widget subscribe(WidgetBuilder builder) {
-    return ListenableBuilder(
-      listenable: this,
-      builder: (context) {
-        return builder(context);
-      },
-    );
-  }
-}
-
 /// 여러개의 [Listenable] 구독 빌더
 ///
 /// 구독된 [listenables]의 변화를 감지하여 위젯을 빌드함
