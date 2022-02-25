@@ -4,10 +4,12 @@ import 'dart:math';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 
-const bool _kIOSDebug = false;
 const double _kBackGestureWidth = 20.0;
 const double _kMinFlingVelocity = 1.0;
 const Animation<double> kAlwaysDismissedAnimation = _AlwaysDismissedAnimation();
+
+/// iOS를 제외한 플래폼에서 뒤로가기 제스처 테스트
+bool cupertinoPopGestureTest = false;
 
 /// 전환 효과 빌더
 typedef SimplePageRouteTransitionBuilder = Widget Function(
@@ -38,7 +40,7 @@ class SimplePageRoute<T> extends PageRoute<T> {
     _reverseTransitionDuration = reverseTransitionDuration;
 
     if (transition == null) {
-      if (Platform.isIOS || _kIOSDebug) {
+      if (Platform.isIOS || cupertinoPopGestureTest) {
         this.transition = (context, animation, child) {
           final linearTransition = Navigator.of(context).userGestureInProgress;
           final textDirection = Directionality.of(context);
@@ -124,7 +126,7 @@ class SimplePageRoute<T> extends PageRoute<T> {
     }
 
     if (previousPopTransition == null) {
-      if (Platform.isIOS || _kIOSDebug) {
+      if (Platform.isIOS || cupertinoPopGestureTest) {
         this.previousPopTransition = (context, animation, child) {
           final linearTransition = Navigator.of(context).userGestureInProgress;
           final textDirection = Directionality.of(context);
@@ -197,7 +199,7 @@ class SimplePageRoute<T> extends PageRoute<T> {
     }
 
     if (fullscreenDialogTransition == null) {
-      if (Platform.isIOS || _kIOSDebug) {
+      if (Platform.isIOS || cupertinoPopGestureTest) {
         this.fullscreenDialogTransition =
             (_, animation, child) => SlideTransition(
                   position: CurvedAnimation(
@@ -295,7 +297,7 @@ class SimplePageRoute<T> extends PageRoute<T> {
   @override
   Duration get transitionDuration {
     if (_transitionDuration == null) {
-      return (Platform.isIOS || _kIOSDebug)
+      return (Platform.isIOS || cupertinoPopGestureTest)
           ? const Duration(milliseconds: 500)
           : const Duration(milliseconds: 300);
     }
@@ -305,7 +307,7 @@ class SimplePageRoute<T> extends PageRoute<T> {
   @override
   Duration get reverseTransitionDuration {
     if (_reverseTransitionDuration == null) {
-      return (Platform.isIOS || _kIOSDebug)
+      return (Platform.isIOS || cupertinoPopGestureTest)
           ? const Duration(milliseconds: 500)
           : const Duration(milliseconds: 300);
     }
@@ -319,7 +321,8 @@ class SimplePageRoute<T> extends PageRoute<T> {
   @override
   bool canTransitionTo(TransitionRoute<dynamic> nextRoute) {
     if (nextRoute is SimplePageRoute) {
-      if (!((Platform.isIOS || _kIOSDebug) && nextRoute.fullscreenDialog)) {
+      if (!((Platform.isIOS || cupertinoPopGestureTest) &&
+          nextRoute.fullscreenDialog)) {
         _nextRouteSecondaryTransition = nextRoute.previousPopTransition;
         return true;
       }
@@ -341,7 +344,7 @@ class SimplePageRoute<T> extends PageRoute<T> {
     Widget child,
   ) {
     final cupertinoGestureChild =
-        ((Platform.isIOS || _kIOSDebug) && !fullscreenDialog)
+    ((Platform.isIOS || cupertinoPopGestureTest) && !fullscreenDialog)
             ? _CupertinoBackGestureDetector<T>(
                 popGestureDragRange: popGestureDragRange,
                 enabledCallback: () {
@@ -387,7 +390,7 @@ class SimplePageRoute<T> extends PageRoute<T> {
           )
         : cupertinoGestureChild;
 
-    if ((Platform.isIOS || _kIOSDebug) && fullscreenDialog) {
+    if ((Platform.isIOS || cupertinoPopGestureTest) && fullscreenDialog) {
       return fullscreenDialogTransition(
         context,
         animation,
@@ -619,4 +622,76 @@ class _AlwaysDismissedAnimation extends Animation<double> {
 
   @override
   String toString() => 'kAlwaysDismissedAnimation';
+}
+
+/// [SimplePageRoute] 기반으로 페이지 열기
+///
+/// [replacementPage] : 현재 페이지를 덮어씌워서 열도록하고 강제로 페이드인 효과를 줌
+Future<T> showSimplePage<T>({
+  required BuildContext context,
+  RouteSettings? settings,
+  bool fullscreenDialog = false,
+  double popGestureDragRange = 1.0,
+  required WidgetBuilder page,
+  SimplePageRouteTransitionBuilder? transition,
+  SimplePageRouteTransitionBuilder? previousPopTransition,
+  SimplePageRouteTransitionBuilder? fullscreenDialogTransition,
+  Duration? transitionDuration,
+  Duration? reverseTransitionDuration,
+  bool opaque = true,
+  bool barrierDismissible = false,
+  Color? barrierColor,
+  String? barrierLabel,
+  bool maintainState = true,
+  bool replacementPage = false,
+}) async {
+  return await showSimplePageRoute(
+    context: context,
+    route: SimplePageRoute(
+      settings: settings,
+      fullscreenDialog: fullscreenDialog,
+      popGestureDragRange: popGestureDragRange,
+      page: page,
+      transition: transition,
+      previousPopTransition: previousPopTransition,
+      fullscreenDialogTransition: fullscreenDialogTransition,
+      transitionDuration: transitionDuration,
+      reverseTransitionDuration: reverseTransitionDuration,
+      opaque: opaque,
+      barrierDismissible: barrierDismissible,
+      barrierColor: barrierColor,
+      barrierLabel: barrierLabel,
+      maintainState: maintainState,
+    ),
+    replacementPage: replacementPage,
+  );
+}
+
+/// [SimplePageRoute] 기반으로 페이지 열기
+///
+/// [replacementPage] : 현재 페이지를 덮어씌워서 열도록하고 강제로 페이드인 효과를 줌
+Future<T> showSimplePageRoute<T>({
+  required BuildContext context,
+  required SimplePageRoute route,
+  bool replacementPage = false,
+}) async {
+  final navigator = Navigator.of(context, rootNavigator: true);
+  return replacementPage
+      ? await navigator.pushReplacement(
+          route.copyWith(
+            previousPopTransition: (_, __, child) => child,
+            transition: (_, animation, child) {
+              return FadeTransition(
+                opacity: animation.drive(
+                  Tween<double>(
+                    begin: 0.0,
+                    end: 1.0,
+                  ),
+                ),
+                child: child,
+              );
+            },
+          ),
+        )
+      : await navigator.push(route);
 }
