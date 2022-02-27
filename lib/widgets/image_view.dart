@@ -121,10 +121,10 @@ class ImageView extends StatelessWidget {
       color: color,
       colorBlendMode: colorBlendMode,
       loadStateChanged: (state) {
-        if (state.extendedImageLoadState != LoadState.loading) {
+        if (state.extendedImageLoadState == LoadState.loading) {
           return placeHolder ?? const SizedBox.shrink();
         }
-        if (state.extendedImageLoadState != LoadState.failed) {
+        if (state.extendedImageLoadState == LoadState.failed) {
           return error ?? placeHolder ?? const SizedBox.shrink();
         }
         return state.completedWidget;
