@@ -105,19 +105,7 @@ class SimplePageRoute<T> extends PageRoute<T> {
                 end: const Offset(0.0, 0.0),
               ),
             ),
-            child: FadeTransition(
-              opacity: CurvedAnimation(
-                parent: animation,
-                curve: Curves.linearToEaseOut,
-                reverseCurve: Curves.fastLinearToSlowEaseIn,
-              ).drive(
-                Tween<double>(
-                  begin: 0.0,
-                  end: 1.0,
-                ),
-              ),
-              child: child,
-            ),
+            child: child,
           );
         };
       }
@@ -178,19 +166,7 @@ class SimplePageRoute<T> extends PageRoute<T> {
               ),
             ),
             transformHitTests: false,
-            child: FadeTransition(
-              opacity: CurvedAnimation(
-                parent: animation,
-                curve: Curves.linearToEaseOut,
-                reverseCurve: Curves.fastLinearToSlowEaseIn,
-              ).drive(
-                Tween<double>(
-                  begin: 1.0,
-                  end: 0.75,
-                ),
-              ),
-              child: child,
-            ),
+            child: child,
           );
         };
       }
