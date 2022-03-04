@@ -2,12 +2,19 @@ package com.nextstory.nextstory;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.Context;
+import android.content.Intent;
 import android.graphics.Color;
+import android.media.MediaScannerConnection;
+import android.net.Uri;
 import android.os.Build;
 
 import androidx.annotation.NonNull;
 
 import java.lang.reflect.Field;
+import java.io.File;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
 import io.flutter.embedding.engine.plugins.FlutterPlugin;
@@ -30,11 +37,33 @@ public class NextstoryPlugin implements FlutterPlugin, MethodCallHandler {
 
   @Override
   public void onMethodCall(@NonNull MethodCall call, @NonNull Result result) {
+    Activity activity = Utils.getActivity();
+
     switch (call.method) {
       case "enableAndroidTransparentNavigationBar":
-        Activity activity = Utils.getActivity();
         if (activity != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
           activity.getWindow().setNavigationBarColor(Color.TRANSPARENT);
+        }
+        result.success(null);
+        break;
+
+      case "mediaScan":
+        if (activity != null) {
+          try {
+            String path = call.argument("path");
+            File file = new File(path);
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+              activity.sendBroadcast(
+                  new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(file)));
+            } else {
+              MediaScannerConnection.scanFile(
+                  activity,
+                  new String[]{file.toString()},
+                  new String[]{file.getName()},
+                  null);
+            }
+          } catch (Exception ignored) {
+          }
         }
         result.success(null);
         break;

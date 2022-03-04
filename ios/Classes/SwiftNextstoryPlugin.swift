@@ -14,6 +14,11 @@ public class SwiftNextstoryPlugin: NSObject, FlutterPlugin {
       return
     }
 
+    if (call.method == "mediaScan") {
+      result(nil)
+      return
+    }
+
     if (call.method == "disableDelayTouchesBeganIOS") {
       let window = (UIApplication.shared.delegate as! FlutterAppDelegate).window!;
       (window.gestureRecognizers![0] as UIGestureRecognizer).delaysTouchesBegan = false

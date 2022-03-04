@@ -28,4 +28,16 @@ class Nextstory {
       );
     }
   }
+
+  /// 미디어 스캔
+  ///
+  /// 안드로이드 전용 메소드
+  static Future mediaScan(File file) async {
+    if (Platform.isIOS) {
+      await _methodChannel.invokeMethod(
+        'mediaScan',
+        {'path': file.path},
+      );
+    }
+  }
 }
