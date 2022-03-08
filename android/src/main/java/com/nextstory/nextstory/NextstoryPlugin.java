@@ -52,15 +52,11 @@ public class NextstoryPlugin implements FlutterPlugin, MethodCallHandler {
           try {
             String path = call.argument("path");
             File file = new File(path);
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
               activity.sendBroadcast(
                   new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(file)));
             } else {
-              MediaScannerConnection.scanFile(
-                  activity,
-                  new String[]{file.toString()},
-                  new String[]{file.getName()},
-                  null);
+              new MediaScanner(activity, file.getAbsolutePath()).connect();
             }
           } catch (Exception ignored) {
           }
@@ -78,6 +74,30 @@ public class NextstoryPlugin implements FlutterPlugin, MethodCallHandler {
   @Override
   public void onDetachedFromEngine(@NonNull FlutterPluginBinding binding) {
     channel.setMethodCallHandler(null);
+  }
+}
+
+class MediaScanner implements MediaScannerConnection.MediaScannerConnectionClient {
+  final MediaScannerConnection mediaScannerConnection;
+  final String path;
+
+  public MediaScanner(Context context, String path) {
+    this.mediaScannerConnection = new MediaScannerConnection(context, this);
+    this.path = path;
+  }
+
+  @Override
+  public void onMediaScannerConnected() {
+    mediaScannerConnection.scanFile(path, null);
+  }
+
+  @Override
+  public void onScanCompleted(String path, Uri uri) {
+    mediaScannerConnection.disconnect();
+  }
+
+  public void connect() {
+    mediaScannerConnection.connect();
   }
 }
 
