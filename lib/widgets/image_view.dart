@@ -1,11 +1,21 @@
+// ignore_for_file: deprecated_member_use, library_private_types_in_public_api
+
+import 'dart:io';
+
 import 'package:extended_image/extended_image.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+enum _ImageType {
+  asset,
+  file,
+  network,
+}
+
 class ImageView extends StatelessWidget {
   const ImageView._({
-    Key? key,
-    required this.isAssetImage,
+    super.key,
+    required this.type,
     required this.src,
     this.placeHolder,
     this.error,
@@ -15,7 +25,7 @@ class ImageView extends StatelessWidget {
     this.alignment = Alignment.center,
     this.color,
     this.colorBlendMode = BlendMode.srcIn,
-  }) : super(key: key);
+  });
 
   factory ImageView.asset({
     Key? key,
@@ -31,7 +41,34 @@ class ImageView extends StatelessWidget {
   }) {
     return ImageView._(
       key: key,
-      isAssetImage: true,
+      type: _ImageType.asset,
+      src: src,
+      placeHolder: placeHolder,
+      error: error,
+      width: width,
+      height: height,
+      fit: fit,
+      alignment: alignment,
+      color: color,
+      colorBlendMode: colorBlendMode,
+    );
+  }
+
+  factory ImageView.file({
+    Key? key,
+    required String src,
+    Widget? placeHolder,
+    Widget? error,
+    double? width,
+    double? height,
+    BoxFit fit = BoxFit.contain,
+    Alignment alignment = Alignment.center,
+    Color? color,
+    BlendMode colorBlendMode = BlendMode.srcIn,
+  }) {
+    return ImageView._(
+      key: key,
+      type: _ImageType.file,
       src: src,
       placeHolder: placeHolder,
       error: error,
@@ -58,7 +95,7 @@ class ImageView extends StatelessWidget {
   }) {
     return ImageView._(
       key: key,
-      isAssetImage: false,
+      type: _ImageType.network,
       src: src,
       placeHolder: placeHolder,
       error: error,
@@ -71,7 +108,7 @@ class ImageView extends StatelessWidget {
     );
   }
 
-  final bool isAssetImage;
+  final _ImageType type;
   final Widget? placeHolder, error;
 
   final String src;
@@ -84,7 +121,7 @@ class ImageView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (isAssetImage) {
+    if (type == _ImageType.asset) {
       if (src.trim().endsWith('svg')) {
         return SvgPicture.asset(
           src,
@@ -101,6 +138,34 @@ class ImageView extends StatelessWidget {
 
       return Image.asset(
         src,
+        width: width,
+        height: height,
+        fit: fit,
+        alignment: alignment,
+        color: color,
+        colorBlendMode: colorBlendMode,
+        errorBuilder: (_, __, ___) =>
+            error ?? placeHolder ?? const SizedBox.shrink(),
+      );
+    }
+
+    if (type == _ImageType.file) {
+      if (src.trim().endsWith('svg')) {
+        return SvgPicture.file(
+          File(src),
+          width: width,
+          height: height,
+          fit: fit,
+          alignment: alignment,
+          color: color,
+          colorBlendMode: colorBlendMode,
+          placeholderBuilder: (_) =>
+              error ?? placeHolder ?? const SizedBox.shrink(),
+        );
+      }
+
+      return Image.file(
+        File(src),
         width: width,
         height: height,
         fit: fit,

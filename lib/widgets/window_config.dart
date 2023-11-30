@@ -1,40 +1,53 @@
 import 'dart:io';
-import 'dart:ui';
 
-import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_device_type/flutter_device_type.dart';
-import 'package:focus_detector/focus_detector.dart';
+import 'package:nextstory/exceptions/library_not_initialized.dart';
+import 'package:nextstory/foundation/device.dart';
+import 'package:nextstory/nextstory.dart';
 
-/// iOS를 제외한 플래폼에서 화면 최상단 탭 시 최상단 스크롤 이동 테스트
-bool cupertinoScrollToTopTest = false;
+class SystemTheme {
+  bool fullscreen;
+  bool statusDarkIcon;
+  bool navigationDarkIcon;
+  ScreenOrientation orientation;
+  ScreenOrientation? inheritedOrientation;
 
-/// 테마 설정
-enum WindowTheme {
-  /// 상태바 검정색 아이콘
-  darkIcon,
+  SystemTheme({
+    this.fullscreen = false,
+    this.statusDarkIcon = false,
+    this.navigationDarkIcon = false,
+    this.orientation = ScreenOrientation.unspecified,
+  });
+}
 
-  /// 상태바 하얀색 아이콘
-  lightIcon,
+enum ScreenOrientation {
+  /// 방향 없음
+  unspecified,
 
-  /// 전체화면
-  fullscreen,
+  /// 세로 모드
+  portrait,
+
+  /// 가로 모드
+  landscape,
+
+  /// 가장 최근에 지정된 방향으로 맞춤
+  inherit,
 }
 
 /// 시스템 UI 설정 위젯
-///
-/// [Material]
 class WindowConfig extends StatefulWidget {
   const WindowConfig({
-    Key? key,
+    super.key,
     required this.child,
     this.color = Colors.white,
-    this.windowTheme = WindowTheme.darkIcon,
-    this.orientation,
+    this.orientation = ScreenOrientation.unspecified,
     this.navigationBarColor,
+    this.navigationBarDividerColor,
     this.navigationBarIconBrightness,
-  }) : super(key: key);
+    this.statusBarIconBrightness,
+    this.forceEdgeToEdge = false,
+    this.fullscreen = false,
+  });
 
   /// 자식 위젯
   final Widget child;
@@ -42,201 +55,227 @@ class WindowConfig extends StatefulWidget {
   /// 배경 색상
   final Color color;
 
-  /// 테마 설정
-  final WindowTheme windowTheme;
-
   /// 화면 방향
-  final Orientation? orientation;
+  final ScreenOrientation orientation;
 
   /// 안드로이드 내비게이션바 색상
   final Color? navigationBarColor;
 
+  /// 안드로이드 내비게이션바 선 색상
+  final Color? navigationBarDividerColor;
+
   /// 안드로이드 내비게이션바 아이콘 타입
   final Brightness? navigationBarIconBrightness;
 
+  /// 안드로이드 상태바 아이콘 타입
+  final Brightness? statusBarIconBrightness;
+
+  /// 강제로 EdgeToEdge를 사용하도록 합니다.
+  final bool forceEdgeToEdge;
+
+  /// 전체화면 사용
+  final bool fullscreen;
+
   @override
-  _WindowConfigState createState() => _WindowConfigState();
+  State<WindowConfig> createState() => _WindowConfigState();
 }
 
 class _WindowConfigState extends State<WindowConfig> {
+  bool get _edgeToEdgeMode {
+    return Devices.hasGestureBar(context) ||
+        widget.forceEdgeToEdge ||
+        Platform.isIOS;
+  }
+
+  Brightness get _navigationBarIconBrightness {
+    if (widget.navigationBarIconBrightness == null) {
+      return Brightness.light;
+    }
+
+    // android: 구버전 지원
+    if (Platform.isAndroid && Nextstory.androidSdkVersion < 26) {
+      return Brightness.light;
+    }
+
+    // iOS: 내비게이션바가 없으므로 임의값 지정
+    if (Platform.isIOS) {
+      return Brightness.light;
+    }
+
+    return widget.navigationBarIconBrightness!;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final mediaQuery = MediaQuery.of(context);
+    final lib = context.findAncestorWidgetOfExactType<LibraryInitializer>();
+    if (lib == null) {
+      throw LibraryNotInitializedException();
+    }
 
-    return Material(
-      borderRadius: BorderRadius.zero,
-      color: widget.color,
-      elevation: 0.0,
-      child: FutureBuilder(
-        future: _setupAndroidVersion(),
-        builder: (_, __) {
-          if (_androidVersion == -1) {
-            return const SizedBox.shrink();
-          }
-
-          _applyScreenOrientation();
-          _applyTheme();
-
-          return AnnotatedRegion<SystemUiOverlayStyle>(
-            value: SystemUiOverlayStyle(
-              statusBarColor: Colors.transparent,
-              statusBarBrightness: _getStatusBarIconBrightness(context),
-              statusBarIconBrightness: _getStatusBarIconBrightness(context),
-              systemNavigationBarColor: _hasGestureBar(context)
-                  ? Colors.transparent
-                  : widget.navigationBarColor ?? Colors.black,
-              systemNavigationBarIconBrightness:
-                  _getNavigationBarIconBrightness(context),
+    final statusBarIconBrightness = widget.statusBarIconBrightness;
+    final navigationIconBrightness = _navigationBarIconBrightness;
+    return AnnotatedRegion<SystemTheme>(
+      value: SystemTheme(
+        fullscreen: widget.fullscreen,
+        statusDarkIcon: statusBarIconBrightness == Brightness.dark,
+        navigationDarkIcon: navigationIconBrightness == Brightness.dark,
+        orientation: widget.orientation,
+      ),
+      child: Material(
+        borderRadius: BorderRadius.zero,
+        color: widget.color,
+        elevation: 0.0,
+        child: Stack(
+          children: [
+            // 컨텐츠 영역
+            SafeArea(
+              top: false,
+              left: _edgeToEdgeMode ? false : true,
+              right: _edgeToEdgeMode ? false : true,
+              bottom: _edgeToEdgeMode ? false : true,
+              child: widget.child,
             ),
-            child: FocusDetector(
-              onFocusGained: () {
-                _applyScreenOrientation();
-                _applyTheme();
-              },
-              child: Stack(
-                children: [
-                  SafeArea(
-                    top: false,
-                    left: false,
-                    right: false,
-                    bottom: _hasGestureBar(context) ? false : true,
-                    child: widget.child,
-                  ),
-                  Positioned(
-                    left: 0.0,
-                    right: 0.0,
-                    bottom: 0.0,
-                    height: _hasGestureBar(context)
-                        ? 0.0
-                        : mediaQuery.padding.bottom,
-                    child: const ColoredBox(color: Colors.black),
-                  ),
-                  Positioned(
-                    top: 0.0,
-                    left: 0.0,
-                    right: 0.0,
-                    height: mediaQuery.padding.top,
-                    child: GestureDetector(
-                      excludeFromSemantics: true,
-                      onTap: Platform.isIOS
-                          ? () {
-                              final _primaryScrollController =
-                                  PrimaryScrollController.of(context);
-                              if (_primaryScrollController != null &&
-                                  _primaryScrollController.hasClients) {
-                                _primaryScrollController.animateTo(
-                                  0.0,
-                                  duration: const Duration(milliseconds: 500),
-                                  curve: Curves.linearToEaseOut,
-                                );
-                              }
-                            }
-                          : null,
-                    ),
-                  ),
-                ],
+
+            // android: 내비게이션바 색상
+            _buildNavigationBar(),
+
+            // iOS: 터치 시 맨 위로 스크롤 영역
+            Container(
+              alignment: Alignment.topCenter,
+              width: double.infinity,
+              height: MediaQuery.paddingOf(context).top,
+              child: GestureDetector(
+                excludeFromSemantics: true,
+                onTap: () {
+                  if (Platform.isIOS) {
+                    final sc = PrimaryScrollController.of(context);
+                    if (sc.hasClients) {
+                      sc.animateTo(
+                        0.0,
+                        duration: const Duration(milliseconds: 500),
+                        curve: Curves.linearToEaseOut,
+                      );
+                    }
+                  }
+                },
               ),
             ),
-          );
-        },
+          ],
+        ),
       ),
     );
   }
 
-  void _applyTheme() {
-    if (widget.windowTheme == WindowTheme.fullscreen) {
-      SystemChrome.setEnabledSystemUIMode(
-        SystemUiMode.immersiveSticky,
-        overlays: [
-          SystemUiOverlay.top,
-          SystemUiOverlay.bottom,
-        ],
+  Widget _buildNavigationBar() {
+    if (_edgeToEdgeMode) {
+      return const SizedBox.shrink();
+    }
+
+    final padding = MediaQuery.paddingOf(context);
+    final navigationBarDividerColor =
+        widget.navigationBarDividerColor ?? Colors.transparent;
+
+    if (padding.left > 0) {
+      return Align(
+        alignment: Alignment.centerLeft,
+        child: SizedBox(
+          width: padding.left,
+          height: double.infinity,
+          child: Stack(
+            children: [
+              Container(
+                width: double.infinity,
+                height: double.infinity,
+                decoration: BoxDecoration(
+                  color: widget.navigationBarColor ?? Colors.black,
+                  border: Border(
+                    right: BorderSide(
+                      color: navigationBarDividerColor,
+                      width: Nextstory.androidSdkVersion >= 26 ? 1.0 : 0.0,
+                    ),
+                  ),
+                ),
+              ),
+              // 구버전 지원 반투명 색상
+              Container(
+                width: double.infinity,
+                height: double.infinity,
+                color: (Nextstory.androidSdkVersion >= 26 || _edgeToEdgeMode)
+                    ? Colors.transparent
+                    : Colors.black.withOpacity(0.2),
+              ),
+            ],
+          ),
+        ),
       );
-    } else {
-      SystemChrome.setEnabledSystemUIMode(
-        _isEdgeToEdgeSupported()
-            ? SystemUiMode.edgeToEdge
-            : SystemUiMode.manual,
-        overlays: [
-          SystemUiOverlay.top,
-          SystemUiOverlay.bottom,
-        ],
+    }
+
+    if (padding.right > 0) {
+      return Align(
+        alignment: Alignment.centerRight,
+        child: SizedBox(
+          width: padding.right,
+          height: double.infinity,
+          child: Stack(
+            children: [
+              Container(
+                width: double.infinity,
+                height: double.infinity,
+                decoration: BoxDecoration(
+                  color: widget.navigationBarColor ?? Colors.black,
+                  border: Border(
+                    left: BorderSide(
+                      color: navigationBarDividerColor,
+                      width: Nextstory.androidSdkVersion >= 26 ? 1.0 : 0.0,
+                    ),
+                  ),
+                ),
+              ),
+              // 구버전 지원 반투명 색상
+              Container(
+                width: double.infinity,
+                height: double.infinity,
+                color: (Nextstory.androidSdkVersion >= 26 || _edgeToEdgeMode)
+                    ? Colors.transparent
+                    : Colors.black.withOpacity(0.2),
+              ),
+            ],
+          ),
+        ),
       );
     }
-  }
 
-  void _applyScreenOrientation() {
-    if (widget.orientation == null) {
-      SystemChrome.setPreferredOrientations([
-        DeviceOrientation.portraitUp,
-        DeviceOrientation.portraitDown,
-        DeviceOrientation.landscapeLeft,
-        DeviceOrientation.landscapeRight,
-      ]);
-    } else if (widget.orientation == Orientation.portrait) {
-      SystemChrome.setPreferredOrientations([
-        DeviceOrientation.portraitUp,
-        DeviceOrientation.portraitDown,
-      ]);
-    } else if (widget.orientation == Orientation.landscape) {
-      SystemChrome.setPreferredOrientations([
-        DeviceOrientation.landscapeLeft,
-        DeviceOrientation.landscapeRight,
-      ]);
-    }
-  }
-
-  Brightness _getStatusBarIconBrightness(BuildContext context) {
-    return widget.windowTheme == WindowTheme.darkIcon
-        ? Platform.isIOS
-            ? Brightness.light
-            : Brightness.dark
-        : Platform.isIOS
-            ? Brightness.dark
-            : Brightness.light;
-  }
-
-  Brightness _getNavigationBarIconBrightness(BuildContext context) {
-    if (widget.navigationBarIconBrightness == null) {
-      return Brightness.light;
-    }
-    return widget.navigationBarIconBrightness == Brightness.dark
-        ? Platform.isIOS
-            ? Brightness.light
-            : Brightness.dark
-        : Platform.isIOS
-            ? Brightness.dark
-            : Brightness.light;
-  }
-}
-
-var _androidVersion = -1;
-
-bool _hasGestureBar(BuildContext context) {
-  if (Platform.isAndroid) {
-    final insets = window.systemGestureInsets;
-    return insets.right > 0 && insets.left > 0 && insets.bottom > 0;
-  }
-  return Device.get().hasNotch;
-}
-
-bool _isEdgeToEdgeSupported() {
-  if (Platform.isIOS) {
-    return true;
-  }
-  return _androidVersion >= 29;
-}
-
-Future _setupAndroidVersion() async {
-  if (_androidVersion == -1) {
-    if (Platform.isAndroid) {
-      DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
-      AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
-      _androidVersion = androidInfo.version.sdkInt ?? 23;
-      return;
-    }
-
-    // iOS 버전 처리
-    _androidVersion = 23;
+    // bottom
+    return Align(
+      alignment: Alignment.bottomCenter,
+      child: SizedBox(
+        width: double.infinity,
+        height: padding.bottom,
+        child: Stack(
+          children: [
+            Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: widget.navigationBarColor ?? Colors.black,
+                border: Border(
+                  top: BorderSide(
+                    color: navigationBarDividerColor,
+                    width: Nextstory.androidSdkVersion >= 26 ? 1.0 : 0.0,
+                  ),
+                ),
+              ),
+            ),
+            // 구버전 지원 반투명 색상
+            Container(
+              width: double.infinity,
+              height: double.infinity,
+              color: (Nextstory.androidSdkVersion >= 26 || _edgeToEdgeMode)
+                  ? Colors.transparent
+                  : Colors.black.withOpacity(0.2),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

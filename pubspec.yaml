@@ -2,28 +2,27 @@ name: nextstory
 description: A Library plugin project.
 version: 1.0.0
 publish_to: 'none'
-homepage: http://ec2-3-34-185-2.ap-northeast-2.compute.amazonaws.com:8889/troy/library_flutter
 
 environment:
-  sdk: '>=2.15.0 <3.0.0'
+  sdk: '>=3.0.0'
   flutter: '>=2.5.0'
 
 dependencies:
   flutter:
     sdk: flutter
+
   flutter_localizations:
     sdk: flutter
-  flutter_device_type: ^0.4.0
-  device_info_plus: ^3.2.1
-  focus_detector: ^2.0.0
-  intl: ^0.17.0
-  extended_image: ^6.0.1
-  flutter_svg: ^1.0.1
+
+  intl: any
+  visibility_detector: any
+  extended_image: ^8.2.0
+  flutter_svg: ^2.0.9
 
 dev_dependencies:
+  flutter_lints: any
   flutter_test:
     sdk: flutter
-  flutter_lints: ^1.0.0
 
 flutter:
   plugin:

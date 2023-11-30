@@ -4,10 +4,10 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 /// 지역화 적용 위젯
 class LocalizationConfiguration extends StatelessWidget {
   const LocalizationConfiguration({
-    Key? key,
+    super.key,
     required this.locale,
     required this.child,
-  }) : super(key: key);
+  });
 
   final Locale locale;
   final Widget child;
