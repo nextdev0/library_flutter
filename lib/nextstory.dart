@@ -38,6 +38,28 @@ abstract final class Nextstory {
       await methodChannel.invokeMethod('mediaScan', {'path': file.path});
     }
   }
+
+  /// 네이티브 로케일 적용
+  ///
+  /// 예시 1:
+  /// ```dart
+  /// await applyNativeLocale('ko-KR');
+  /// ```
+  ///
+  /// 예시 2:
+  /// ```dart
+  /// await applyNativeLocale('en');
+  /// ```
+  ///
+  /// iOS 전용 메소드
+  static Future<void> applyNativeLocale(String locale) async {
+    if (Platform.isIOS) {
+      await methodChannel.invokeMethod(
+        'applyNativeLocale',
+        {'locale': locale},
+      );
+    }
+  }
 }
 
 class LibraryInitializer extends StatefulWidget {

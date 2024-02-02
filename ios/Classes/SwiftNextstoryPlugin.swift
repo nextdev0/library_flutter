@@ -1,4 +1,5 @@
 import Flutter
+import Foundation
 import UIKit
 
 public class SwiftNextstoryPlugin: NSObject, FlutterPlugin {
@@ -14,6 +15,13 @@ public class SwiftNextstoryPlugin: NSObject, FlutterPlugin {
       (window.gestureRecognizers![0] as UIGestureRecognizer).delaysTouchesBegan = false
       (window.gestureRecognizers![1] as UIGestureRecognizer).delaysTouchesBegan = false
 
+      result(nil)
+      return
+    }
+
+    if (call.method == "applyNativeLocale") {
+      let newLocale = Locale(identifier: call.arguments["locale"] as! String)
+      Bundle.main.preferredLocalizations = [newLocale.languageCode!]
       result(nil)
       return
     }

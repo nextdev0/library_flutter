@@ -1,9 +1,29 @@
+import org.jetbrains.kotlin.gradle.tasks.KaptGenerateStubs
+
 group 'com.nextstory.nextstory'
 version '1.0.0'
 
 buildscript {
+  def localProperties = rootProject.file('local.properties').with {
+    def properties = new Properties()
+    if (exists()) {
+      withReader('UTF-8') {
+        properties.load(it)
+      }
+    }
+    return properties
+  }
+
   ext {
-    kotlinVersion = '1.7.22'
+    minSdk = 23
+    targetSdk = 34
+    compileSdk = 34
+
+    kotlinVersion = '1.7.10'
+
+    flutterVersionCode = localProperties.getProperty('flutter.versionCode') ?: '1'
+    flutterVersionName = localProperties.getProperty('flutter.versionName') ?: '1.0'
+    flutterRoot = localProperties.getProperty('flutter.sdk') ?: ''
   }
 
   repositories {
@@ -12,29 +32,16 @@ buildscript {
   }
 
   dependencies {
-    classpath 'com.android.tools.build:gradle:8.1.4'
+    classpath 'com.android.tools.build:gradle:7.4.2'
     classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion"
   }
 }
 
-rootProject.allprojects {
+allprojects {
   repositories {
     google()
     mavenCentral()
   }
-}
-
-def localProperties = new Properties()
-def localPropertiesFile = rootProject.file('local.properties')
-if (localPropertiesFile.exists()) {
-  localPropertiesFile.withReader('UTF-8') { reader ->
-    localProperties.load(reader)
-  }
-}
-
-def flutterRoot = localProperties.getProperty('flutter.sdk')
-if (flutterRoot == null) {
-  throw new GradleException('Flutter SDK not found. Define location with flutter.sdk in the local.properties file.')
 }
 
 apply plugin: 'com.android.library'
@@ -44,29 +51,21 @@ android {
   namespace 'com.nextstory.nextstory'
   compileSdk 34
 
+  defaultConfig {
+    minSdk 23
+  }
+
   compileOptions {
     sourceCompatibility JavaVersion.VERSION_1_8
     targetCompatibility JavaVersion.VERSION_1_8
   }
 
   kotlinOptions {
-    jvmTarget = '1.8'
+    jvmTarget = JavaVersion.VERSION_1_8.toString()
   }
 
-  defaultConfig {
-    minSdk 23
-  }
-
-  testOptions {
-    unitTests.all {
-      useJUnitPlatform()
-
-      testLogging {
-        events 'passed', 'skipped', 'failed', 'standardOut', 'standardError'
-        outputs.upToDateWhen { false }
-        showStandardStreams = true
-      }
-    }
+  sourceSets {
+    main.java.srcDirs += 'src/main/kotlin'
   }
 
   lintOptions {
@@ -74,10 +73,28 @@ android {
     warningsAsErrors true
     disable 'AndroidGradlePluginVersion', 'InvalidPackage', 'GradleDependency'
   }
+}
 
-  dependencies {
-    testImplementation 'org.jetbrains.kotlin:kotlin-test'
-    testImplementation 'org.mockito:mockito-core:5.0.0'
-    implementation "org.jetbrains.kotlin:kotlin-stdlib"
+tasks.withType(KaptGenerateStubs).configureEach {
+  // noinspection GrDeprecatedAPIUsage
+  kotlinOptions {
+    jvmTarget = JavaVersion.VERSION_1_8.toString()
+  }
+}
+
+dependencies {
+  compileOnly 'androidx.annotation:annotation:1.6.0'
+  implementation 'androidx.core:core-ktx:1.10.1'
+
+  constraints {
+    // noinspection ForeignDelegate
+    implementation('org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.0') {
+      because('kotlin-stdlib-jdk7 is now a part of kotlin-stdlib')
+    }
+
+    // noinspection ForeignDelegate
+    implementation('org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.0') {
+      because('kotlin-stdlib-jdk8 is now a part of kotlin-stdlib')
+    }
   }
 }

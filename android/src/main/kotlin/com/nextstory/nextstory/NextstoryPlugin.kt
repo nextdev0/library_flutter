@@ -108,6 +108,7 @@ class NextstoryPlugin : FlutterPlugin, MethodCallHandler {
         activity.requestedOrientation = DeviceOrientation.decodeOrientations(
           call.argument<List<String>>("orientations")!!,
         )
+        result.success(null)
       }
 
       else -> {
