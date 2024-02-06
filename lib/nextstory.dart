@@ -41,17 +41,8 @@ abstract final class Nextstory {
 
   /// 네이티브 로케일 적용
   ///
-  /// 예시 1:
-  /// ```dart
-  /// await applyNativeLocale('ko-KR');
-  /// ```
-  ///
-  /// 예시 2:
-  /// ```dart
-  /// await applyNativeLocale('en');
-  /// ```
-  ///
-  /// iOS 전용 메소드
+  /// [Selector]에서 로케일이 변경될 경우 내부적으로 해당 메소드가 호출됩니다.
+  @protected
   static Future<void> applyNativeLocale(String locale) async {
     if (Platform.isIOS) {
       await methodChannel.invokeMethod(

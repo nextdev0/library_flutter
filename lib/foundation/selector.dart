@@ -1,9 +1,12 @@
 // ignore_for_file: non_constant_identifier_names
 // ignore_for_file: library_private_types_in_public_api
+// ignore_for_file: deprecated_member_use_from_same_package
+// ignore_for_file: invalid_use_of_protected_member
 
 import 'dart:ui';
 
 import 'package:flutter/widgets.dart';
+import 'package:nextstory/nextstory.dart';
 
 final Selector = _SelectorImpl();
 
@@ -63,7 +66,15 @@ class _SelectorImpl {
 
   set locale(Locale? locale) {
     _appLocale = locale;
-    reassemble();
+
+    Future.microtask(() async {
+      // NOTE: `ko-KR`, `en-US`와 같은 형식으로 처리되는지 불확실함. (동작 확인 필요)
+      final platformDispatcher = PlatformDispatcher.instance;
+      final appLocale = locale ?? platformDispatcher.locale;
+      await Nextstory.applyNativeLocale(appLocale.toLanguageTag());
+
+      reassemble();
+    });
   }
 
   /// 현재 로케일에 맞는 값을 반환

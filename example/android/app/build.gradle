@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.tasks.KaptGenerateStubs
+
 def localProperties = new Properties()
 def localPropertiesFile = rootProject.file('local.properties')
 if (localPropertiesFile.exists()) {
@@ -27,25 +29,12 @@ apply from: "$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"
 
 android {
   namespace 'com.nextstory.nextstory_example'
-  compileSdk 34
-
-  compileOptions {
-    sourceCompatibility JavaVersion.VERSION_1_8
-    targetCompatibility JavaVersion.VERSION_1_8
-  }
-
-  kotlinOptions {
-    jvmTarget = '1.8'
-  }
-
-  sourceSets {
-    main.java.srcDirs += 'src/main/kotlin'
-  }
+  compileSdk rootProject.compileSdk
 
   defaultConfig {
     applicationId 'com.nextstory.nextstory_example'
-    minSdk 23
-    targetSdk 34
+    minSdk rootProject.minSdk
+    targetSdk rootProject.targetSdk
     versionCode flutterVersionCode.toInteger()
     versionName flutterVersionName
   }
@@ -55,10 +44,45 @@ android {
       signingConfig signingConfigs.debug
     }
   }
+
+  compileOptions {
+    coreLibraryDesugaringEnabled true
+    sourceCompatibility JavaVersion.VERSION_1_8
+    targetCompatibility JavaVersion.VERSION_1_8
+  }
+
+  kotlinOptions {
+    jvmTarget = JavaVersion.VERSION_1_8.toString()
+  }
+
+  sourceSets {
+    main.java.srcDirs += 'src/main/kotlin'
+  }
+}
+
+tasks.withType(KaptGenerateStubs).configureEach {
+  // noinspection GrDeprecatedAPIUsage
+  kotlinOptions {
+    jvmTarget = JavaVersion.VERSION_1_8.toString()
+  }
 }
 
 flutter {
   source '../..'
 }
 
-dependencies {}
+dependencies {
+  coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.4'
+
+  implementation platform("org.jetbrains.kotlin:kotlin-bom:$kotlinVersion")
+  implementation 'org.jetbrains.kotlin:kotlin-stdlib'
+  implementation 'androidx.core:core-ktx:1.12.0'
+
+  constraints {
+    // noinspection ForeignDelegate
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk7'
+
+    // noinspection ForeignDelegate
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8'
+  }
+}
