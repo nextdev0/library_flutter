@@ -1,13 +1,20 @@
 // ignore_for_file: deprecated_member_use, library_private_types_in_public_api
 
+import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:extended_image/extended_image.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:lzma/lzma.dart';
 
 enum _ImageType {
   asset,
+  lzMemory,
+  lzSvgMemory,
+  memory,
+  svgMemory,
   file,
   network,
 }
@@ -42,6 +49,114 @@ class ImageView extends StatelessWidget {
     return ImageView._(
       key: key,
       type: _ImageType.asset,
+      src: src,
+      placeHolder: placeHolder,
+      error: error,
+      width: width,
+      height: height,
+      fit: fit,
+      alignment: alignment,
+      color: color,
+      colorBlendMode: colorBlendMode,
+    );
+  }
+
+  factory ImageView.lzMemory({
+    Key? key,
+    required String src,
+    Widget? placeHolder,
+    Widget? error,
+    double? width,
+    double? height,
+    BoxFit fit = BoxFit.contain,
+    Alignment alignment = Alignment.center,
+    Color? color,
+    BlendMode colorBlendMode = BlendMode.srcIn,
+  }) {
+    return ImageView._(
+      key: key,
+      type: _ImageType.lzMemory,
+      src: src,
+      placeHolder: placeHolder,
+      error: error,
+      width: width,
+      height: height,
+      fit: fit,
+      alignment: alignment,
+      color: color,
+      colorBlendMode: colorBlendMode,
+    );
+  }
+
+  factory ImageView.lzSvgMemory({
+    Key? key,
+    required String src,
+    Widget? placeHolder,
+    Widget? error,
+    double? width,
+    double? height,
+    BoxFit fit = BoxFit.contain,
+    Alignment alignment = Alignment.center,
+    Color? color,
+    BlendMode colorBlendMode = BlendMode.srcIn,
+  }) {
+    return ImageView._(
+      key: key,
+      type: _ImageType.lzSvgMemory,
+      src: src,
+      placeHolder: placeHolder,
+      error: error,
+      width: width,
+      height: height,
+      fit: fit,
+      alignment: alignment,
+      color: color,
+      colorBlendMode: colorBlendMode,
+    );
+  }
+
+  factory ImageView.memory({
+    Key? key,
+    required Uint8List src,
+    Widget? placeHolder,
+    Widget? error,
+    double? width,
+    double? height,
+    BoxFit fit = BoxFit.contain,
+    Alignment alignment = Alignment.center,
+    Color? color,
+    BlendMode colorBlendMode = BlendMode.srcIn,
+  }) {
+    return ImageView._(
+      key: key,
+      type: _ImageType.memory,
+      src: src,
+      placeHolder: placeHolder,
+      error: error,
+      width: width,
+      height: height,
+      fit: fit,
+      alignment: alignment,
+      color: color,
+      colorBlendMode: colorBlendMode,
+    );
+  }
+
+  factory ImageView.svgMemory({
+    Key? key,
+    required Uint8List src,
+    Widget? placeHolder,
+    Widget? error,
+    double? width,
+    double? height,
+    BoxFit fit = BoxFit.contain,
+    Alignment alignment = Alignment.center,
+    Color? color,
+    BlendMode colorBlendMode = BlendMode.srcIn,
+  }) {
+    return ImageView._(
+      key: key,
+      type: _ImageType.svgMemory,
       src: src,
       placeHolder: placeHolder,
       error: error,
@@ -111,7 +226,8 @@ class ImageView extends StatelessWidget {
   final _ImageType type;
   final Widget? placeHolder, error;
 
-  final String src;
+  final Object src;
+
   final double? width;
   final double? height;
   final BoxFit fit;
@@ -122,9 +238,10 @@ class ImageView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (type == _ImageType.asset) {
-      if (src.trim().endsWith('svg')) {
+      final realSrc = src as String;
+      if (realSrc.trim().endsWith('svg')) {
         return SvgPicture.asset(
-          src,
+          realSrc,
           width: width,
           height: height,
           fit: fit,
@@ -137,7 +254,7 @@ class ImageView extends StatelessWidget {
       }
 
       return Image.asset(
-        src,
+        realSrc,
         width: width,
         height: height,
         fit: fit,
@@ -149,10 +266,75 @@ class ImageView extends StatelessWidget {
       );
     }
 
+    if (type == _ImageType.lzMemory) {
+      final realSrc = src as String;
+      final decoded = base64Decode(realSrc);
+      final decompressed = Uint8List.fromList(lzma.decode(decoded));
+      return Image.memory(
+        decompressed,
+        width: width,
+        height: height,
+        fit: fit,
+        alignment: alignment,
+        color: color,
+        colorBlendMode: colorBlendMode,
+        errorBuilder: (_, __, ___) =>
+            error ?? placeHolder ?? const SizedBox.shrink(),
+      );
+    }
+
+    if (type == _ImageType.lzSvgMemory) {
+      final realSrc = src as String;
+      final decoded = base64Decode(realSrc);
+      final decompressed = Uint8List.fromList(lzma.decode(decoded));
+      return SvgPicture.memory(
+        decompressed,
+        width: width,
+        height: height,
+        fit: fit,
+        alignment: alignment,
+        color: color,
+        colorBlendMode: colorBlendMode,
+        placeholderBuilder: (_) =>
+            error ?? placeHolder ?? const SizedBox.shrink(),
+      );
+    }
+
+    if (type == _ImageType.memory) {
+      final realSrc = src as Uint8List;
+      return Image.memory(
+        realSrc,
+        width: width,
+        height: height,
+        fit: fit,
+        alignment: alignment,
+        color: color,
+        colorBlendMode: colorBlendMode,
+        errorBuilder: (_, __, ___) =>
+            error ?? placeHolder ?? const SizedBox.shrink(),
+      );
+    }
+
+    if (type == _ImageType.svgMemory) {
+      final realSrc = src as Uint8List;
+      return SvgPicture.memory(
+        realSrc,
+        width: width,
+        height: height,
+        fit: fit,
+        alignment: alignment,
+        color: color,
+        colorBlendMode: colorBlendMode,
+        placeholderBuilder: (_) =>
+            error ?? placeHolder ?? const SizedBox.shrink(),
+      );
+    }
+
     if (type == _ImageType.file) {
-      if (src.trim().endsWith('svg')) {
+      final realSrc = src as String;
+      if (realSrc.trim().endsWith('svg')) {
         return SvgPicture.file(
-          File(src),
+          File(realSrc),
           width: width,
           height: height,
           fit: fit,
@@ -165,7 +347,7 @@ class ImageView extends StatelessWidget {
       }
 
       return Image.file(
-        File(src),
+        File(realSrc),
         width: width,
         height: height,
         fit: fit,
@@ -178,7 +360,7 @@ class ImageView extends StatelessWidget {
     }
 
     return ExtendedImage.network(
-      src,
+      src as String,
       width: width,
       height: height,
       fit: fit,
