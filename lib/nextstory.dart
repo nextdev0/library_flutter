@@ -245,9 +245,7 @@ class _LibraryInitializerState extends State<LibraryInitializer>
             'applyScreenOrientation',
             {
               'orientations': _getScreenOrientation(systemTheme.orientation)
-                  .map(
-                    (e) => e.toString(),
-                  )
+                  .map((e) => e.toString())
                   .toList(),
             },
           );

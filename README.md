@@ -11,7 +11,7 @@ dependencies:
   nextstory:
     git:
       url: http://ec2-3-34-185-2.ap-northeast-2.compute.amazonaws.com:8889/troy/library_flutter.git
-      ref: 1.2.2
+      ref: 1.2.4
 ```
 
 (2) `pub get` 실행
