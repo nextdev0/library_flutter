@@ -71,7 +71,7 @@ class _SolidButtonState extends State<SolidButton> {
             ? () {
                 final onPressed = widget.onPressed;
                 if (onPressed != null) {
-                  FocusScope.of(context).unfocus();
+                  FocusManager.instance.primaryFocus?.unfocus();
                   onPressed();
                 }
               }
@@ -184,7 +184,7 @@ class _WidgetButtonState extends State<WidgetButton> {
             ? () {
                 final onPressed = widget.onPressed;
                 if (onPressed != null) {
-                  FocusScope.of(context).unfocus();
+                  FocusManager.instance.primaryFocus?.unfocus();
                   onPressed();
                 }
               }
