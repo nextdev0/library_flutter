@@ -100,7 +100,7 @@ class ScrollEdgeListener extends StatefulWidget {
   final VoidCallback? onTop, onLeft, onRight, onBottom;
 
   @override
-  State<ScrollEdgeListener> createState() => _ScrollEdgeListenerState();
+  State createState() => _ScrollEdgeListenerState();
 }
 
 class _ScrollEdgeListenerState extends State<ScrollEdgeListener> {

@@ -77,7 +77,7 @@ class WindowConfig extends StatefulWidget {
   final bool fullscreen;
 
   @override
-  State<WindowConfig> createState() => _WindowConfigState();
+  State createState() => _WindowConfigState();
 }
 
 class _WindowConfigState extends State<WindowConfig> {

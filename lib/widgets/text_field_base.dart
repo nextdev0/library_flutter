@@ -268,3 +268,86 @@ class _TextFieldBaseState extends State<TextFieldBase> {
     }
   }
 }
+
+class SimpleTextField extends StatefulWidget {
+  const SimpleTextField({
+    super.key,
+    this.controller,
+    this.nextController,
+    this.keyboardType,
+    this.textInputAction,
+    this.onFieldSubmitted,
+    this.maxLines = 1,
+    this.minLines,
+    this.hint,
+    this.isPassword = false,
+    this.padding = const EdgeInsets.symmetric(
+      horizontal: 16.0,
+      vertical: 8.0,
+    ),
+    this.color,
+    this.focusedColor,
+    this.border,
+    this.focusedBorder,
+    this.textStyle,
+    this.hintTextStyle,
+  });
+
+  final TextEditingController? controller;
+  final TextEditingController? nextController;
+  final TextInputType? keyboardType;
+  final TextInputAction? textInputAction;
+  final ValueChanged<String>? onFieldSubmitted;
+  final int maxLines;
+  final int? minLines;
+  final bool isPassword;
+  final String? hint;
+  final EdgeInsets padding;
+  final Color? color, focusedColor;
+  final InputBorder? border, focusedBorder;
+  final TextStyle? textStyle, hintTextStyle;
+
+  @override
+  State createState() => _SimpleTextFieldState();
+}
+
+class _SimpleTextFieldState extends State<SimpleTextField> {
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final primaryColor = theme.primaryColor;
+    final textStyle =
+        widget.textStyle ?? theme.primaryTextTheme.headlineMedium!;
+
+    return TextFieldBase(
+      controller: widget.controller,
+      nextController: widget.nextController,
+      keyboardType: widget.keyboardType,
+      textInputAction: widget.textInputAction ?? TextInputAction.done,
+      maxLines: widget.maxLines,
+      minLines: widget.minLines,
+      cursorColor: primaryColor,
+      onFieldSubmitted: widget.onFieldSubmitted,
+      obscureText: widget.isPassword,
+      style: textStyle,
+      decoration: InputDecoration(
+        isDense: true,
+        filled: true,
+        hintText: widget.hint,
+        hintStyle: widget.hintTextStyle ??
+            textStyle.copyWith(
+              color: textStyle.color!.withOpacity(0.25),
+            ),
+        contentPadding: widget.padding,
+        fillColor: widget.color,
+        focusColor: widget.focusedColor ?? widget.color,
+        border: widget.border,
+        enabledBorder: widget.border,
+        disabledBorder: widget.border,
+        errorBorder: widget.border,
+        focusedBorder: widget.focusedBorder,
+        focusedErrorBorder: widget.focusedBorder,
+      ),
+    );
+  }
+}
