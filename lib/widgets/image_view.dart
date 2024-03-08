@@ -250,10 +250,10 @@ class ImageView extends StatelessWidget {
     }
 
     if (type == _ImageType.file) {
-      final realSrc = src as String;
-      if (realSrc.trim().endsWith('svg')) {
+      final realSrc = src as File;
+      if (realSrc.path.endsWith('svg')) {
         return SvgPicture.file(
-          File(realSrc),
+          realSrc,
           width: width,
           height: height,
           fit: fit,
@@ -266,7 +266,7 @@ class ImageView extends StatelessWidget {
       }
 
       return Image.file(
-        File(realSrc),
+        realSrc,
         width: width,
         height: height,
         fit: fit,
