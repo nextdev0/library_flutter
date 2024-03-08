@@ -18,7 +18,6 @@ dependencies:
   visibility_detector: any
   extended_image: ^8.2.0
   flutter_svg: ^2.0.9
-  lzma: ^1.0.1
   auto_size_text: ^3.0.0
 
 dev_dependencies:

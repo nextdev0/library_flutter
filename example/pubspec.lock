@@ -97,14 +97,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.1.2"
-  fixnum:
-    dependency: transitive
-    description:
-      name: fixnum
-      sha256: "25517a4deb0c03aa0f32fd12db525856438902d9c16536311e76cdc57b31d7d1"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.1.0"
   flutter:
     dependency: "direct main"
     description: flutter
@@ -208,14 +200,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.0.0"
-  lzma:
-    dependency: transitive
-    description:
-      name: lzma
-      sha256: d7d003f9d6bcffe293684d0a1d0768592aa488db6315f2a9d031f00e6f0c245f
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.0.1"
   matcher:
     dependency: transitive
     description:
