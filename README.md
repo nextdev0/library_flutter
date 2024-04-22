@@ -1,6 +1,6 @@
-# nextstory
+# library_flutter
 
-라이브러리 프로젝트
+Flutter 라이브러리 프로젝트
 
 ## 설치
 
@@ -10,7 +10,7 @@
 dependencies:
   nextstory:
     git:
-      url: http://ec2-3-34-185-2.ap-northeast-2.compute.amazonaws.com:8889/troy/library_flutter.git
+      url: https://github.com/nextdev0/library_flutter.git
       ref: 1.2.7
 ```
 
